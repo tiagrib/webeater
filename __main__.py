@@ -1,13 +1,13 @@
 if __name__ == "__main__":
     import asyncio
-    from weat import WebeaterEngine
+    from weat import Webeater
 
     # Example usage
     WINDOW_SIZE_W = 1920
     WINDOW_SIZE_H = 1080
 
     async def main():
-        engine = await WebeaterEngine.create()
+        engine = await Webeater.create()
 
         # user input loop until q is inserted
         while True:
