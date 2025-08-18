@@ -69,6 +69,7 @@ class WebeaterBeautifulSoup(ContentExtractor):
             # Remove by tag
             for tag in self.unwanted_tags:
                 for element in soup.find_all(tag):
+                    self.log.debug(f"Removing element with tag: {tag}")
                     element.decompose()
 
             # Remove by exact class name
@@ -81,7 +82,7 @@ class WebeaterBeautifulSoup(ContentExtractor):
                         element_str = str(element)
                     except Exception:
                         element_str = ""
-                    print(f"Removing element with class: {class_name}")
+                    self.log.debug(f"Removing element with class: {class_name}")
                     element.decompose()
 
             # Remove by exact id
@@ -89,6 +90,7 @@ class WebeaterBeautifulSoup(ContentExtractor):
                 for element in soup.find_all(
                     lambda tag: tag.has_attr("id") and tag.get("id", "") == id_name
                 ):
+                    self.log.debug(f"Removing element with id: {id_name}")
                     element.decompose()
 
             # Try to find main content areas
