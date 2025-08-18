@@ -3,7 +3,7 @@ from abc import ABC
 
 class HtmlRenderer(ABC):
     """
-    A class to define the interface for web eating runtime operations in Webeater.
+    A class to define the interface for html rendering operations in Webeater.
     """
 
     def __init__(self):

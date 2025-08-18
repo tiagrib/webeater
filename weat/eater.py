@@ -1,5 +1,6 @@
 from datetime import datetime
 from weat.config import DEFAULT_CONFIG_FILE, WeatConfig
+from weat.thirdparty.beautifulsoup import WebeaterBeautifulSoup
 from weat.thirdparty.selenium import SeleniumRuntime
 from weat.log import getLog
 
@@ -17,7 +18,7 @@ class Webeater:
         self.log.info(f"WebeaterEngine initialized with config: {self.config}")
 
         self.html_renderer = SeleniumRuntime()
-        self.context_extractor = None
+        self.context_extractor = WebeaterBeautifulSoup()
 
     async def _async_init(self):
         """Async initialization method"""
@@ -26,6 +27,11 @@ class Webeater:
             self.config.window_size_w, self.config.window_size_h
         )
         self.log.info("Selenium driver loaded successfully.")
+
+        self.log.info("Load BeautifulSoup extractor...")
+        await self.context_extractor.load()
+        self.log.info("BeautifulSoup extractor loaded successfully.")
+
         return self
 
     @classmethod
@@ -57,21 +63,15 @@ class Webeater:
                 self.log.error(
                     "Content extractor not set. Please set a content extractor before fetching content."
                 )
-                content = ModuleNotFoundError
+                content = html_content
             else:
                 render_time = datetime.now()
-
-                if self.context_extractor is None:
-                    content = (
-                        self.context_extractor.extract_content_with_beautifulsoup1(
-                            html_content
-                        )
-                    )
-                    self.log.info(
-                        f"Content extracted from {url} in {render_time - start_time}s. Total eating time: {datetime.now() - start_time}s."
-                    )
-                else:
-                    content = html_content
+                content = await self.context_extractor.extract_content(
+                    url, html_content
+                )
+                self.log.info(
+                    f"Content extracted from {url} in {render_time - start_time}s. Total eating time: {datetime.now() - start_time}s."
+                )
         else:
             self.log.error(f"Failed to fetch content from {url}.")
             content = None
