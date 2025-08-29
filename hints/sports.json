@@ -1,0 +1,12 @@
+{
+    "main": {
+        "selectors": [
+            "[class*=\"calendar\"]",
+            "[class*=\"schedule\"]",
+            "[class*=\"fixture\"]",
+            ".sports-content",
+            ".game-schedule",
+            ".match-results"
+        ]
+    }
+}
