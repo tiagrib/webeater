@@ -1,0 +1,9 @@
+{
+    "window_size_w": 1920,
+    "window_size_h": 1080,
+    "hint_files": [
+        "default",
+        "news"
+    ],
+    "debug": true
+}

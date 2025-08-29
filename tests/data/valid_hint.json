@@ -1,0 +1,21 @@
+{
+    "remove": {
+        "tags": [
+            "script",
+            "style"
+        ],
+        "classes": [
+            "ad",
+            "popup"
+        ],
+        "ids": [
+            "footer"
+        ]
+    },
+    "main": {
+        "selectors": [
+            "main",
+            ".content"
+        ]
+    }
+}
