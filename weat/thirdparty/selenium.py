@@ -37,20 +37,47 @@ class SeleniumRuntime(HtmlRenderer):
         self.WebDriverWait = WebDriverWait
         self.EC = EC
         self.Driver = None
+        self.window_size_w = WINDOW_SIZE_W
+        self.window_size_h = WINDOW_SIZE_H
 
     async def shutdown(self):
-        self.log.info("Shutting down Selenium driver...")
+        self.log.debug("Shutting down Selenium driver...")
         await asyncio.to_thread(self.Driver.quit)
-        self.log.info("Selenium driver shut down successfully.")
+        self.log.debug("Selenium driver shut down successfully.")
 
-    async def load(self, window_size_w=1920, window_size_h=1080):
+    async def reload(self):
+        self.log.debug("Reloading Selenium driver...")
+        if self.Driver:
+            await asyncio.to_thread(self.Driver.quit)
+            self.Driver = None
+        await self.load()
+        self.log.debug("Selenium driver reloaded successfully.")
+
+    async def load(self, window_size_w=None, window_size_h=None, is_reload=False):
         """
         Load the Selenium WebDriver with optimized settings.
         """
         if not self.Driver:
-            # Import Selenium components only when needed
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
+            if self.window_size_w is None:
+                if window_size_w is None:
+                    self.window_size_w = WINDOW_SIZE_W
+                else:
+                    self.window_size_w = window_size_w
+            elif window_size_w is not None:
+                self.window_size_w = window_size_w
+
+            if self.window_size_h is None:
+                if window_size_h is None:
+                    self.window_size_h = WINDOW_SIZE_H
+                else:
+                    self.window_size_h = window_size_h
+            elif window_size_h is not None:
+                self.window_size_h = window_size_h
+
+            if not is_reload:
+                # Import Selenium components only when needed
+                from selenium import webdriver
+                from selenium.webdriver.chrome.options import Options
 
             # Configure Chrome options for headless operation
             options = Options()
@@ -60,7 +87,7 @@ class SeleniumRuntime(HtmlRenderer):
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-extensions")
             options.add_argument(
-                f"--window-size={window_size_w},{window_size_h}"
+                f"--window-size={self.window_size_w},{self.window_size_h}"
             )  # Set window size
 
             options.add_argument("--disable-background-networking")
@@ -130,7 +157,7 @@ class SeleniumRuntime(HtmlRenderer):
             start_time = datetime.now()
             if self.Driver is None:
                 await self.load()
-                self.log.info(
+                self.log.debug(
                     f"Started Selenium driver @ {datetime.now() - start_time}"
                 )
 
@@ -145,7 +172,7 @@ class SeleniumRuntime(HtmlRenderer):
 
                 # Navigate to the URL
                 await asyncio.to_thread(self.Driver.get, url)
-                self.log.info(f"Finished initial GET @ {datetime.now() - start_time}")
+                self.log.debug(f"Finished initial GET @ {datetime.now() - start_time}")
 
                 # Wait for initial page load
                 try:
@@ -155,20 +182,20 @@ class SeleniumRuntime(HtmlRenderer):
                     )
                 except Exception:
                     pass
-                self.log.info(f"Page loaded @ {datetime.now() - start_time}")
+                self.log.debug(f"Page loaded @ {datetime.now() - start_time}")
 
                 # Additional wait for ajax calls
                 # await asyncio.to_thread(time.sleep, 1)  # Simple wait approach
 
                 # Scroll to trigger any lazy loading
                 await self.scroll_page()
-                self.log.info(f"Scroll complete @ {datetime.now() - start_time}")
+                self.log.debug(f"Scroll complete @ {datetime.now() - start_time}")
 
                 if interact:
                     #   TO DO:
                     #     # Try to interact with tabs to get more content
                     #     await _interact_with_tabs(driver)
-                    #     self.log.info(
+                    #     self.log.debug(
                     #         f"Interaction complete @ {datetime.now() - self.start_time}"
                     #     )
                     raise NotImplementedError(
@@ -177,7 +204,7 @@ class SeleniumRuntime(HtmlRenderer):
 
                 # Get the rendered page source
                 html = await asyncio.to_thread(lambda: self.Driver.page_source)
-                self.log.info(
+                self.log.debug(
                     f"Rendered HTML content length: {len(html)} characters @ {datetime.now() - start_time}"
                 )
                 return html
@@ -213,7 +240,7 @@ class SeleniumRuntime(HtmlRenderer):
             scroll_height = 0
             scroll_height_end = WINDOW_SIZE_H
 
-            self.log.info(f"Starting page scroll, initial height: {height}")
+            self.log.debug(f"Starting page scroll, initial height: {height}")
 
             # First pass - scroll to bottom
             while (
@@ -222,7 +249,7 @@ class SeleniumRuntime(HtmlRenderer):
             ):
                 scroll_height += scroll_step
                 scroll_height_end = min(scroll_height + WINDOW_SIZE_H, height)
-                self.log.info(f"Scrolling down: {scroll_height}/{height}")
+                self.log.debug(f"Scrolling down: {scroll_height}/{height}")
                 await asyncio.to_thread(
                     self.Driver.execute_script, f"window.scrollTo(0, {scroll_height});"
                 )
@@ -234,7 +261,7 @@ class SeleniumRuntime(HtmlRenderer):
                 )
                 if new_height > height:
                     height = new_height
-                    self.log.info(f"Page expanded to {height} pixels")
+                    self.log.debug(f"Page expanded to {height} pixels")
 
             # Second pass - scroll back to top slowly
             while scroll_height > 0:
@@ -243,13 +270,13 @@ class SeleniumRuntime(HtmlRenderer):
                 await asyncio.to_thread(
                     self.Driver.execute_script, f"window.scrollTo(0, {scroll_height});"
                 )
-                self.log.info(f"Scrolling up: {scroll_height}/{height}")
+                self.log.debug(f"Scrolling up: {scroll_height}/{height}")
                 await asyncio.sleep(SCROLL_UP_PAUSE)
 
             # Final wait at top
             await asyncio.sleep(FINAL_SCROLL_PAUSE)
 
-            self.log.info("Aggressive page scrolling completed")
+            self.log.debug("Page scrolling completed")
 
         except Exception as e:
-            self.log.warning(f"Error during aggressive page scrolling: {e}")
+            self.log.warning(f"Error during page scrolling: {e}")

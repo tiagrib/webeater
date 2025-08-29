@@ -13,6 +13,15 @@ LOG_LEVEL_STYLES = dict(coloredlogs.DEFAULT_LEVEL_STYLES)
 # E.g. modify color styles
 # LOG_LEVEL_STYLES["debug"]["color"] = "cyan"
 
+global log_debug
+log_debug = False
+
+
+def setLogDebug(debug: bool):
+    """Set the global debug flag for logging."""
+    global log_debug
+    log_debug = debug
+
 
 def getLog(name=None):
     """Get the logger for the webeater module."""
@@ -22,7 +31,8 @@ def getLog(name=None):
 
     if name not in __loggers:
         ret_log = logging.getLogger(name)
-        ret_log.setLevel(logging.INFO)
+        global log_debug
+        ret_log.setLevel(logging.DEBUG if log_debug else logging.INFO)
 
         coloredlogs.install(
             level=ret_log.level,

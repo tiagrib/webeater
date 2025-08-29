@@ -12,40 +12,44 @@ class Webeater:
     and perform actions related to web content extraction.
     """
 
-    def __init__(self, config_filename=DEFAULT_CONFIG_FILE):
-        self.config = WeatConfig(filename=config_filename)
+    def __init__(self, config: WeatConfig):
+        self.config = config
         self.log = getLog()
         self.log.info(f"WebeaterEngine initialized with config: {self.config}")
 
         self.html_renderer = SeleniumRuntime()
+        # Use the pre-combined hints from config
+        self.content_extraction_hints = self.config.get_combined_hints()
         self.context_extractor = WebeaterBeautifulSoup()
 
     async def _async_init(self):
         """Async initialization method"""
-        self.log.info("Loading Selenium driver...")
+        self.log.debug("Loading Selenium driver...")
         await self.html_renderer.load(
             self.config.window_size_w, self.config.window_size_h
         )
-        self.log.info("Selenium driver loaded successfully.")
+        self.log.debug("Selenium driver loaded successfully.")
 
-        self.log.info("Load BeautifulSoup extractor...")
+        self.log.debug("Load BeautifulSoup extractor...")
         await self.context_extractor.load()
-        self.log.info("BeautifulSoup extractor loaded successfully.")
+        self.log.debug("BeautifulSoup extractor loaded successfully.")
 
         return self
 
     @classmethod
-    async def create(cls):
+    async def create(cls, config: WeatConfig):
         """Factory method to create and initialize WebeaterEngine"""
-        instance = cls()
+        instance = cls(config=config)
         await instance._async_init()
         return instance
 
-    async def get(self, url):
+    async def get(self, url, hints=None, return_dict=False, content_only=False):
         """
         Fetch content from the given URL using the engine.
         """
-        self.log.info(f"Fetching content from {url}")
+        self.log.info(
+            f"Fetching content {'only ' if content_only else ''}{'as JSON ' if return_dict else ''}from {url}"
+        )
         start_time = datetime.now()
         try:
             html_content = await self.html_renderer.get_rendered_html(url)
@@ -53,6 +57,7 @@ class Webeater:
         except Exception as e:
             self.log.error(f"JavaScript rendering failed: {e}")
             html_content = None
+            await self.html_renderer.reload()
 
         if html_content:
             self.log.info(
@@ -65,9 +70,17 @@ class Webeater:
                 )
                 content = html_content
             else:
+                if hints is None:
+                    hints = self.content_extraction_hints
+
                 render_time = datetime.now()
                 content = await self.context_extractor.extract_content(
-                    url, html_content
+                    url,
+                    html_content,
+                    hints=hints,
+                    return_dict=return_dict,
+                    include_images=not content_only,
+                    include_links=not content_only,
                 )
                 self.log.info(
                     f"Content extracted from {url} in {render_time - start_time}s. Total eating time: {datetime.now() - start_time}s."

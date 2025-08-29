@@ -1,10 +1,11 @@
 from weat.util import cleanup_whitespace
 from weat.extracting import ContentExtractor
 from weat.log import getLog
+from weat.config import HintsConfig
 
 
 class WebeaterBeautifulSoup(ContentExtractor):
-    def __init__(self):
+    def __init__(self, hint_names: list = None, combined_hints: HintsConfig = None):
         super().__init__()
         self.log = getLog("weat-bs")
 
@@ -13,52 +14,14 @@ class WebeaterBeautifulSoup(ContentExtractor):
 
         self._BSCLASS = BeautifulSoup
 
-        # Remove unwanted elements
-        self.unwanted_tags = [
-            "script",
-            "style",
-            "nav",
-            "footer",
-            "aside",
-            "advertisement",
-            "ads",
-        ]
-        self.unwanted_classes = [
-            "menu",
-            "footer",
-            "ad",
-            "advertisement",
-            "cookie",
-            "popup",
-        ]
-        self.unwanted_ids = ["menu", "footer", "ad", "advertisement"]
-        self.main_content_selectors = [
-            "main",
-            ".container-fluid",
-            '[role="main"]',
-            "#main",
-            ".main",
-            "#content",
-            ".content",
-            ".main-content",
-            "article",
-            ".article",
-            "#article",
-            ".page-content",
-        ]
-
-        sports_main_content_selectors = [
-            '[class*="calendar"]',
-            '[class*="schedule"]',
-            '[class*="fixture"]',
-        ]
-
     async def extract_content(
         self,
         url: str,
         html: str,
-        include_images: bool = False,
-        include_links: bool = False,
+        include_images: bool = True,
+        include_links: bool = True,
+        hints: HintsConfig = None,
+        return_dict: bool = True,
     ) -> str:
         """
         Enhanced BeautifulSoup extraction with smart content detection.
@@ -66,46 +29,54 @@ class WebeaterBeautifulSoup(ContentExtractor):
         try:
             soup = self._BSCLASS(html, "html.parser")
 
-            # Remove by tag
-            for tag in self.unwanted_tags:
-                for element in soup.find_all(tag):
-                    self.log.debug(f"Removing element with tag: {tag}")
-                    element.decompose()
+            if hints and hints.remove:
+                # Remove by tag
+                if hints.remove.tags:
+                    for tag in hints.remove.tags:
+                        for element in soup.find_all(tag):
+                            self.log.debug(f"Removing element with tag: {tag}")
+                            element.decompose()
 
-            # Remove by exact class name
-            for class_name in self.unwanted_classes:
-                for element in soup.find_all(
-                    lambda tag: tag.has_attr("class")
-                    and class_name in tag.get("class", [])
-                ):
-                    try:
-                        element_str = str(element)
-                    except Exception:
-                        element_str = ""
-                    self.log.debug(f"Removing element with class: {class_name}")
-                    element.decompose()
+                # Remove by exact class name
+                if hints.remove.classes:
+                    for class_name in hints.remove.classes:
+                        for element in soup.find_all(
+                            lambda tag: tag.has_attr("class")
+                            and class_name in tag.get("class", [])
+                        ):
+                            try:
+                                element_str = str(element)
+                            except Exception:
+                                element_str = ""
+                            self.log.debug(f"Removing element with class: {class_name}")
+                            element.decompose()
 
-            # Remove by exact id
-            for id_name in self.unwanted_ids:
-                for element in soup.find_all(
-                    lambda tag: tag.has_attr("id") and tag.get("id", "") == id_name
-                ):
-                    self.log.debug(f"Removing element with id: {id_name}")
-                    element.decompose()
+                # Remove by exact id
+                if hints.remove.ids:
+                    for id_name in hints.remove.ids:
+                        for element in soup.find_all(
+                            lambda tag: tag.has_attr("id")
+                            and tag.get("id", "") == id_name
+                        ):
+                            self.log.debug(f"Removing element with id: {id_name}")
+                            element.decompose()
 
             # Try to find main content areas
 
             main_content = None
-            for selector in self.main_content_selectors:
-                try:
-                    found = soup.select(selector)
-                    if found:
-                        # Use the largest content area
-                        main_content = max(found, key=lambda x: len(x.get_text()))
-                        self.log.info(f"Found main content with selector: {selector}")
-                        break
-                except Exception:
-                    continue
+            if hints and hints.main and hints.main.selectors:
+                for selector in hints.main.selectors:
+                    try:
+                        found = soup.select(selector)
+                        if found:
+                            # Use the largest content area
+                            main_content = max(found, key=lambda x: len(x.get_text()))
+                            self.log.debug(
+                                f"Found main content with hint selector: {selector}"
+                            )
+                            break
+                    except Exception:
+                        continue
 
             # If no main content found, use body but remove known noise
             if not main_content:
@@ -113,40 +84,59 @@ class WebeaterBeautifulSoup(ContentExtractor):
                 self.log.info("Using full body content")
 
             # Extract text with better formatting
-            text_parts = []
+            text_content = []
 
             # Get title
-            title = soup.find("title")
-            if title:
-                text_parts.append(f"# {title.get_text().strip()}\n")
+            title = (
+                soup.find("title").get_text().strip() if soup.find("title") else None
+            )
+            if title and not return_dict:
+                text_content.append(f"# {title}\n")
 
             # Process main content
             content_text = _extract_structured_text(main_content)
 
             if content_text:
                 content_text.replace("\n", ">>>")
-                content_text = content_text.replace(">>><<<", "\n\n").replace(">>>", "\n").replace("<<<", "\n").replace(" < >>", "\n").replace("<", "").replace(">", "")
-                
-
-            text_parts.append(content_text)
+                content_text = (
+                    content_text.replace(">>><<<", "\n\n")
+                    .replace(">>>", "\n")
+                    .replace("<<<", "\n")
+                    .replace(" < >>", "\n")
+                    .replace("<", "")
+                    .replace(">", "")
+                )
+                content_text = cleanup_whitespace(content_text)
+                text_content.append(content_text)
 
             # Add images if requested
             if include_images:
                 images = _extract_images(main_content, url)
-                if images:
-                    text_parts.append("\n\n## Images\n\n" + "\n".join(images))
+                if images and not return_dict:
+                    text_content.append("\n\n## Images\n\n" + "\n".join(images))
 
             # Add links if requested
             if include_links:
                 links = _extract_links(main_content, url)
-                if links:
-                    text_parts.append("\n\n## Links\n\n" + "\n".join(links))
+                if links and not return_dict:
+                    text_content.append("\n\n## Links\n\n" + "\n".join(links))
 
-            result = "\n".join(text_parts).strip()
-            if result:
-                result = cleanup_whitespace(result)
+            text_content = "\n".join(text_content).strip()
 
-            return result.strip() or "No content found"
+            if return_dict:
+                ret = {
+                    "title": title,
+                    "content": text_content,
+                }
+                if include_images:
+                    ret["images"] = images
+
+                if include_links:
+                    ret["links"] = links
+
+                return ret
+            else:
+                return text_content.strip() or "No content found"
 
         except Exception as e:
             self.log.error(f"Enhanced BeautifulSoup extraction failed: {e}")
@@ -171,6 +161,7 @@ def _extract_structured_text(element) -> str:
     text_parts = []
     unique_parts = set()
     tag_name = None
+    element_name = element.name.lower() if element.name else ""
     # Handle different elements differently
     for child in element.children:
         if hasattr(child, "children"):
@@ -191,11 +182,7 @@ def _extract_structured_text(element) -> str:
             if text:
                 if text not in unique_parts:
                     unique_parts.add(text)
-                    # printf"Grab header: {text} (level {level})")
                     text_parts.append(f"\n{'#' * level} {text}\n")
-                else:
-                    # printf"Duplicate1: {text")
-                    pass
 
         # Paragraphs
         elif tag_name == "p":
@@ -203,11 +190,7 @@ def _extract_structured_text(element) -> str:
             if text:
                 if text not in unique_parts:
                     unique_parts.add(text)
-                    # printf"Grab paragraph: {text}")
                     text_parts.append(f"\n{text}\n")
-                else:
-                    # printf"Duplicate2: {text}")
-                    pass
 
         # Lists
         elif tag_name in ["ul", "ol"]:
@@ -220,11 +203,7 @@ def _extract_structured_text(element) -> str:
                         if item_text not in unique_parts:
                             unique_parts.add(item_text)
                             prefix = "- " if tag_name == "ul" else "1. "
-                            # printf"Grab list item: {item_text}")
                             text_parts.append(f"{prefix}{item_text}\n")
-                        else:
-                            # printf"Duplicate3: {item_text}")
-                            pass
 
         # Tables
         elif tag_name == "table":
@@ -232,42 +211,28 @@ def _extract_structured_text(element) -> str:
             if table_text:
                 if table_text not in unique_parts:
                     unique_parts.add(table_text)
-                    # printf"Grab table content: {table_text}")
                     text_parts.append(f"\nT|{table_text}|\n")
-                else:
-                    # printf"Duplicate4: {table_text}")
-                    pass
 
         elif not child_children:
             if isinstance(child, NavigableString):
                 text = child.strip()
             else:
                 text = child.get_text().strip()
-                # printf"Grab text from {tag_name}: {text}")
             if text.strip():
                 text_parts.append(text + " ")
 
         if child_children:
             # If it has children, recurse
             for sub_child in child_children:
-                # printf"Processing child: {sub_child.name if hasattr(sub_child, 'name') else 'N/A'} of {tag_name}")
                 sub_text = _extract_structured_text(sub_child).strip()
                 if sub_text:
                     text_parts.append(sub_text)
-        else:
-            # printf"Text without children - {tag_name}: {text}")
-            pass
-
-    tag_name = element.name.lower() if element.name else ""
-    tag_pref = {
-        "article": "\n",
-    }.get(tag_name, " ")
 
     res = " ".join(text_parts).strip()
-    res = f"{tag_pref}>{res}< "
-    if tag_name not in ["div", "section"]:
-        # printf"Final extracted content[{tag_name}]: {res}")
-        pass
+    res = f">{res}< "
+    if element_name == "article":
+        res = f"\n{res}\n"
+
     return res
 
 
