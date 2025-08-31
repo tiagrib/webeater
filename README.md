@@ -3,9 +3,12 @@
 WebEater is a web content extraction tool designed to fetch and process web pages.
 It is made for developers and researchers who need to extract structured data from web pages efficiently.
 The tool goes straight to the point, focusing on extracting text and structured data from web pages,
-while providing some additional configurations and hits for better efficiency and effectiveness.
+while providing some additional configurations and hits for better effectiveness.
 
 It's main purpose is to serve as a go-to-component that works out of the box for most general use cases.
+
+As it's currently at an early stage, it may not cover all edge cases or complex scenarios.
+We welcome contributions and feedback to help improve its capabilities.
 
 ## Features
 - Fetches web pages and extracts text content into Markdown format.
@@ -39,12 +42,15 @@ pip install -r requirements.txt
 ```
 
 
-## Configuration
+## Configuration and Advanced documentation
 Web Eater uses a configuration file to manage its settings.
 The configuration file is typically located at `config/weat.yaml`.
 
 You can customize the settings in this file to suit your needs,
 such as specifying the default user agent, timeout settings, and other parameters.
+
+For more detailed documentation on configuration options and advanced usage,
+please refer to the [Hints Documentation](hints/README.md).
 
     
     

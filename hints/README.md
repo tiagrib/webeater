@@ -135,9 +135,9 @@ Configure which hints to use in your `weat.json` file:
 
 ## Available Hints
 
-- `default.json`: General-purpose extraction rules
-- `news.json`: Optimized for news websites
-- `sports.json`: Optimized for sports websites with schedules/fixtures
+- `default.json`: General-purpose extraction hints
+- `news.json`: Example hints optimized for news websites
+- `sports.json`: Example hints optimized for sports websites with schedules/fixtures
 
 ## Creating Custom Hints
 
