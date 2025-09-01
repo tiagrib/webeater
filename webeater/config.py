@@ -3,7 +3,7 @@ import json
 import os
 from typing import List, Optional
 
-from weat.log import getLog
+from webeater.log import getLog
 
 DEFAULT_CONFIG_FILE = "weat.json"
 

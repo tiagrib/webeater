@@ -1,8 +1,8 @@
 if __name__ == "__main__":
     import asyncio
     import argparse
-    from weat import Webeater
-    from weat.config import WeatConfig
+    from webeater import Webeater
+    from webeater.config import WeatConfig
 
     async def _process(engine, url, return_dict, content_only):
         try:
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         args = parser.parse_args()
 
         if args.debug:
-            from weat.log import setLogDebug
+            from webeater.log import setLogDebug
 
             setLogDebug(True)
 
@@ -122,4 +122,9 @@ if __name__ == "__main__":
 
         return valid_url, quit, return_dict, content_only, cleaned_url
 
+    asyncio.run(main())
+
+
+def cli_main():
+    """Entry point for console scripts"""
     asyncio.run(main())

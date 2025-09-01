@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
-from weat.log import getLog
-from weat.rendering import HtmlRenderer
+from webeater.log import getLog
+from webeater.rendering import HtmlRenderer
 
 WINDOW_SIZE_W = 1920
 WINDOW_SIZE_H = 3000

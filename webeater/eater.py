@@ -1,8 +1,8 @@
 from datetime import datetime
-from weat.config import DEFAULT_CONFIG_FILE, WeatConfig
-from weat.thirdparty.beautifulsoup import WebeaterBeautifulSoup
-from weat.thirdparty.selenium import SeleniumRuntime
-from weat.log import getLog
+from webeater.config import DEFAULT_CONFIG_FILE, WeatConfig
+from webeater.thirdparty.beautifulsoup import WebeaterBeautifulSoup
+from webeater.thirdparty.selenium import SeleniumRuntime
+from webeater.log import getLog
 
 
 class Webeater:

@@ -1,7 +1,7 @@
-from weat.util import cleanup_whitespace
-from weat.extracting import ContentExtractor
-from weat.log import getLog
-from weat.config import HintsConfig
+from webeater.util import cleanup_whitespace
+from webeater.extracting import ContentExtractor
+from webeater.log import getLog
+from webeater.config import HintsConfig
 
 
 class WebeaterBeautifulSoup(ContentExtractor):

@@ -6,7 +6,7 @@ import shutil
 from unittest.mock import patch
 from pydantic import ValidationError
 
-from weat.config import WeatConfig, HintsConfig, RemoveHints, MainContentHints
+from webeater.config import WeatConfig, HintsConfig, RemoveHints, MainContentHints
 
 
 class TestWeatConfig(unittest.TestCase):

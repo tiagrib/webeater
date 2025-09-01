@@ -5,7 +5,7 @@ import tempfile
 import shutil
 from unittest.mock import patch
 
-from weat.config import HintsConfig, RemoveHints, MainContentHints
+from webeater.config import HintsConfig, RemoveHints, MainContentHints
 
 
 class TestHintsConfig(unittest.TestCase):
