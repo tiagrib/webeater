@@ -94,7 +94,7 @@ from webeater import Webeater
 
 async def main():
     weat = await Webeater.create()
-    content = await weat.get(url="https://www.tiagoribeiro.pt")
+    content = await weat.get(url="https://example.com")
     print(content)
 
 asyncio.run(main())
