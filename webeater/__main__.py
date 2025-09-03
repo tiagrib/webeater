@@ -5,14 +5,22 @@ from webeater import Webeater
 from webeater.config import WeatConfig
 
 
-async def _process(engine, url, return_dict, content_only):
+async def _process(engine, url, return_dict, content_only, silent=False):
     try:
         content = await engine.get(
             url, return_dict=return_dict, content_only=content_only
         )
-        print(f"Content fetched from {url}: {content}")
+        if silent:
+            # In silent mode, only print the content result
+            print(content)
+        else:
+            print(f"Content fetched from {url}: {content}")
     except Exception as e:
-        print(f"Error fetching content: {e}")
+        if silent:
+            # In silent mode, only print the error message without extra text
+            print(f"Error: {e}")
+        else:
+            print(f"Error fetching content: {e}")
 
 
 async def main():
@@ -28,6 +36,11 @@ async def main():
     )
     parser.add_argument("--hints", nargs="*", help="Additional hint files to load")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--silent",
+        action="store_true",
+        help="Silent mode - suppress all debug/info messages, only show results or errors",
+    )
     parser.add_argument("--json", action="store_true", help="Return content as JSON")
     parser.add_argument(
         "--content-only", action="store_true", help="Return only content"
@@ -39,6 +52,11 @@ async def main():
         from webeater.log import setLogDebug
 
         setLogDebug(True)
+
+    if args.silent:
+        from webeater.log import setLogSilent
+
+        setLogSilent(True)
 
     # Create config with all hints loaded and combined
     config = WeatConfig(
@@ -52,11 +70,20 @@ async def main():
     if args.url:
         url = args.url
         if not (url.startswith("http://") or url.startswith("https://")):
-            print("Please provide a valid URL starting with http:// or https://")
+            if args.silent:
+                print(
+                    "Error: Please provide a valid URL starting with http:// or https://"
+                )
+            else:
+                print("Please provide a valid URL starting with http:// or https://")
             await engine.shutdown()
             return
         await _process(
-            engine, url, return_dict=args.json, content_only=args.content_only
+            engine,
+            url,
+            return_dict=args.json,
+            content_only=args.content_only,
+            silent=args.silent,
         )
     else:
         # user input loop until q is inserted
@@ -69,7 +96,12 @@ async def main():
             if url == "":
                 continue
             if not valid_url:
-                print("Please enter a valid URL starting with http:// or https://")
+                if args.silent:
+                    print(
+                        "Error: Please enter a valid URL starting with http:// or https://"
+                    )
+                else:
+                    print("Please enter a valid URL starting with http:// or https://")
                 continue
 
             await _process(
@@ -77,6 +109,7 @@ async def main():
                 url,
                 return_dict=rd,
                 content_only=co,
+                silent=args.silent,
             )
 
     await engine.shutdown()
