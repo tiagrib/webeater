@@ -1,0 +1,29 @@
+{
+    "remove": {
+        "tags": [
+            "aside",
+            "iframe"
+        ],
+        "classes": [
+            "sidebar",
+            "related-articles",
+            "social-share",
+            "comments",
+            "newsletter-signup"
+        ],
+        "ids": [
+            "sidebar",
+            "comments-section"
+        ]
+    },
+    "main": {
+        "selectors": [
+            "article",
+            ".article-content",
+            ".story-body",
+            ".post-content",
+            "[data-module=\"ArticleBody\"]",
+            ".entry-content"
+        ]
+    }
+}

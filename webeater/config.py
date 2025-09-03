@@ -7,6 +7,11 @@ from webeater.log import getLog
 
 DEFAULT_CONFIG_FILE = "weat.json"
 
+# Get the hints directory path relative to this module
+HINTS_DIR = os.path.join(os.path.dirname(__file__), "hints")
+
+DEFAULT_CONFIG_FILE = "weat.json"
+
 
 class RemoveHints(pydantic.BaseModel):
     """Hints for removing unwanted elements."""
@@ -54,9 +59,12 @@ class HintsConfig(pydantic.BaseModel):
         cls,
         hint_files: List[str],
         direct_hints: Optional["HintsConfig"] = None,
-        hints_dir: str = "hints",
+        hints_dir: str = None,
     ) -> "HintsConfig":
         """Load and combine multiple hint files and direct hints into a single configuration."""
+        if hints_dir is None:
+            hints_dir = HINTS_DIR
+
         # Start with direct hints if provided, otherwise create empty
         if direct_hints:
             combined_hints = direct_hints
@@ -167,8 +175,10 @@ class WeatConfig(pydantic.BaseModel):
 
         self.save()
 
-    def _load_combined_hints(self, hints_dir: str = "hints"):
+    def _load_combined_hints(self, hints_dir: str = None):
         """Load and combine all hints into the combined_hints field."""
+        if hints_dir is None:
+            hints_dir = HINTS_DIR
         self.combined_hints = HintsConfig.load_combined_hints(
             hint_files=self.hint_files, direct_hints=self.hints, hints_dir=hints_dir
         )

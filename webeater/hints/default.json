@@ -1,0 +1,43 @@
+{
+    "remove": {
+        "tags": [
+            "script",
+            "style",
+            "nav",
+            "footer",
+            "aside",
+            "advertisement",
+            "ads"
+        ],
+        "classes": [
+            "menu",
+            "footer",
+            "ad",
+            "advertisement",
+            "cookie",
+            "popup"
+        ],
+        "ids": [
+            "menu",
+            "footer",
+            "ad",
+            "advertisement"
+        ]
+    },
+    "main": {
+        "selectors": [
+            "main",
+            ".container-fluid",
+            "[role=\"main\"]",
+            "#main",
+            ".main",
+            "#content",
+            ".content",
+            ".main-content",
+            "article",
+            ".article",
+            "#article",
+            ".page-content"
+        ]
+    }
+}

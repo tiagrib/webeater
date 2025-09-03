@@ -45,7 +45,7 @@ class TestWeatConfig(unittest.TestCase):
             self.test_dir, "definitely_nonexistent_file.json"
         )
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             config = WeatConfig.__new__(WeatConfig)
             config.__init__(filename=nonexistent_file)
 
@@ -67,7 +67,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 with patch.object(WeatConfig, "save"):
                     config = WeatConfig(filename=self.test_config_file)
@@ -81,7 +81,7 @@ class TestWeatConfig(unittest.TestCase):
         """Test loading config from a valid sample data file."""
         valid_sample_file = os.path.join(self.test_data_dir, "valid_sample.json")
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 with patch.object(WeatConfig, "save"):
                     config = WeatConfig(filename=valid_sample_file)
@@ -95,7 +95,7 @@ class TestWeatConfig(unittest.TestCase):
         """Test validation of positive window dimensions."""
         # Test with zero width using test data file
         zero_width_file = os.path.join(self.test_data_dir, "invalid_zero_width.json")
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with self.assertRaises((ValueError, RuntimeError)):
                 WeatConfig(filename=zero_width_file)
 
@@ -103,7 +103,7 @@ class TestWeatConfig(unittest.TestCase):
         negative_height_file = os.path.join(
             self.test_data_dir, "invalid_negative_height.json"
         )
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with self.assertRaises((ValueError, RuntimeError)):
                 WeatConfig(filename=negative_height_file)
 
@@ -114,7 +114,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 with patch.object(WeatConfig, "save"):
                     config = WeatConfig(
@@ -131,7 +131,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 with patch.object(WeatConfig, "save"):
                     config = WeatConfig(
@@ -154,7 +154,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 config = WeatConfig(filename=self.test_config_file)
 
@@ -181,7 +181,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 WeatConfig(filename=self.test_config_file, debug=False)
 
@@ -194,7 +194,7 @@ class TestWeatConfig(unittest.TestCase):
         """Test handling of invalid JSON in config file."""
         invalid_json_file = os.path.join(self.test_data_dir, "invalid_json.json")
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with self.assertRaises(RuntimeError):
                 WeatConfig(filename=invalid_json_file)
 
@@ -202,13 +202,13 @@ class TestWeatConfig(unittest.TestCase):
         """Test handling of invalid data in config file."""
         invalid_data_file = os.path.join(self.test_data_dir, "invalid_data_types.json")
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with self.assertRaises(ValueError):
                 WeatConfig(filename=invalid_data_file)
 
     def test_config_repr(self):
         """Test string representation of config."""
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 with patch.object(WeatConfig, "save"):
                     config = WeatConfig(filename="test.json")
@@ -219,13 +219,13 @@ class TestWeatConfig(unittest.TestCase):
         self.assertIn("window_size_w=1280", repr_str)
         self.assertIn("window_size_h=800", repr_str)
 
-    @patch("weat.config.HintsConfig.load_combined_hints")
+    @patch("webeater.config.HintsConfig.load_combined_hints")
     def test_load_combined_hints(self, mock_load_combined):
         """Test loading combined hints."""
         mock_hints = HintsConfig()
         mock_load_combined.return_value = mock_hints
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "save"):
                 config = WeatConfig(filename="test.json")
 
@@ -243,7 +243,7 @@ class TestWeatConfig(unittest.TestCase):
         with open(self.test_config_file, "w") as f:
             json.dump(config_data, f)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             with patch.object(WeatConfig, "_load_combined_hints"):
                 config = WeatConfig(filename=self.test_config_file)
 

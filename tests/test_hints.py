@@ -59,7 +59,7 @@ class TestHintsConfig(unittest.TestCase):
 
         filepath = self._create_hint_file("test", hint_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_from_file(filepath)
 
         self.assertIsNotNone(hints.remove)
@@ -74,7 +74,7 @@ class TestHintsConfig(unittest.TestCase):
         """Test loading from valid test data file."""
         valid_hint_file = os.path.join(self.test_data_dir, "valid_hint.json")
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_from_file(valid_hint_file)
 
         self.assertIsNotNone(hints.remove)
@@ -94,7 +94,7 @@ class TestHintsConfig(unittest.TestCase):
 
         filepath = self._create_hint_file("legacy", hint_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_from_file(filepath)
 
         self.assertIsNotNone(hints.main)
@@ -104,7 +104,7 @@ class TestHintsConfig(unittest.TestCase):
         """Test loading from non-existent file."""
         nonexistent_file = os.path.join(self.test_hints_dir, "nonexistent.json")
 
-        with patch("weat.config.getLog") as mock_log:
+        with patch("webeater.config.getLog") as mock_log:
             hints = HintsConfig.load_from_file(nonexistent_file)
 
         # Should return empty hints and log warning
@@ -117,7 +117,7 @@ class TestHintsConfig(unittest.TestCase):
         # Use the invalid hint file from test data
         invalid_hint_file = os.path.join(self.test_data_dir, "invalid_hint.json")
 
-        with patch("weat.config.getLog") as mock_log:
+        with patch("webeater.config.getLog") as mock_log:
             hints = HintsConfig.load_from_file(invalid_hint_file)
 
         # Should return empty hints and log error
@@ -131,7 +131,7 @@ class TestHintsConfig(unittest.TestCase):
         with open(filepath, "w") as f:
             f.write("{ invalid json")
 
-        with patch("weat.config.getLog") as mock_log:
+        with patch("webeater.config.getLog") as mock_log:
             hints = HintsConfig.load_from_file(filepath)
 
         # Should return empty hints and log error
@@ -154,7 +154,7 @@ class TestHintsConfig(unittest.TestCase):
 
         self._create_hint_file("single", hint_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["single"], hints_dir=self.test_hints_dir
             )
@@ -181,7 +181,7 @@ class TestHintsConfig(unittest.TestCase):
         self._create_hint_file("hint1", hint1_data)
         self._create_hint_file("hint2", hint2_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["hint1", "hint2"], hints_dir=self.test_hints_dir
             )
@@ -210,7 +210,7 @@ class TestHintsConfig(unittest.TestCase):
 
         self._create_hint_file("file", hint_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["file"], direct_hints=direct_hints, hints_dir=self.test_hints_dir
             )
@@ -245,7 +245,7 @@ class TestHintsConfig(unittest.TestCase):
         self._create_hint_file("hint1", hint1_data)
         self._create_hint_file("hint2", hint2_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["hint1", "hint2"], hints_dir=self.test_hints_dir
             )
@@ -266,7 +266,7 @@ class TestHintsConfig(unittest.TestCase):
         self._create_hint_file("hint1", hint1_data)
         self._create_hint_file("hint2", hint2_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["hint1", "hint2"], hints_dir=self.test_hints_dir
             )
@@ -283,7 +283,7 @@ class TestHintsConfig(unittest.TestCase):
 
         self._create_hint_file("exists", hint_data)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             hints = HintsConfig.load_combined_hints(
                 ["exists", "nonexistent"], hints_dir=self.test_hints_dir
             )
@@ -310,7 +310,7 @@ class TestHintsConfig(unittest.TestCase):
         # This test uses the actual hints directory
         project_hints_dir = "hints"
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             # Test loading default hints
             default_hints = HintsConfig.load_from_file(
                 os.path.join(project_hints_dir, "default.json")
@@ -321,7 +321,7 @@ class TestHintsConfig(unittest.TestCase):
         self.assertIn("script", default_hints.remove.tags)
         self.assertIn("main", default_hints.main.selectors)
 
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             # Test loading news hints
             news_hints = HintsConfig.load_from_file(
                 os.path.join(project_hints_dir, "news.json")
@@ -334,7 +334,7 @@ class TestHintsConfig(unittest.TestCase):
 
     def test_combined_actual_hints(self):
         """Test combining actual hint files from the project."""
-        with patch("weat.config.getLog"):
+        with patch("webeater.config.getLog"):
             combined = HintsConfig.load_combined_hints(
                 ["default", "news"], hints_dir="hints"
             )
