@@ -82,9 +82,12 @@ class Webeater:
                     include_images=not content_only,
                     include_links=not content_only,
                 )
+                fetch_time = datetime.now() - start_time
                 self.log.info(
-                    f"Content extracted from {url} in {render_time - start_time}s. Total eating time: {datetime.now() - start_time}s."
+                    f"Content extracted from {url} in {render_time - start_time}s. Total eating time: {fetch_time}s."
                 )
+                if return_dict:
+                    content["fetch_time"] = str(fetch_time)
         else:
             self.log.error(f"Failed to fetch content from {url}.")
             content = None
