@@ -1,5 +1,6 @@
 from datetime import datetime
-from webeater.config import DEFAULT_CONFIG_FILE, WeatConfig
+from typing import Optional
+from webeater.config import WeatConfig
 from webeater.thirdparty.beautifulsoup import WebeaterBeautifulSoup
 from webeater.thirdparty.selenium import SeleniumRuntime
 from webeater.log import getLog
@@ -7,7 +8,7 @@ from webeater.log import getLog
 
 class Webeater:
     """
-    WebeaterEngine is the main class for the webeater module.
+    Webeater is the main class for the webeater module.
     It provides methods to initialize the engine, load configurations,
     and perform actions related to web content extraction.
     """
@@ -15,7 +16,7 @@ class Webeater:
     def __init__(self, config: WeatConfig):
         self.config = config
         self.log = getLog()
-        self.log.info(f"WebeaterEngine initialized with config: {self.config}")
+        self.log.info(f"Webeater initialized with config: {self.config}")
 
         self.html_renderer = SeleniumRuntime()
         # Use the pre-combined hints from config
@@ -37,8 +38,13 @@ class Webeater:
         return self
 
     @classmethod
-    async def create(cls, config: WeatConfig):
-        """Factory method to create and initialize WebeaterEngine"""
+    async def create(cls, config: Optional[WeatConfig] = None):
+        """Factory method to create and initialize Webeater.
+
+        If no config is provided, a default WeatConfig will be used.
+        """
+        if config is None:
+            config = WeatConfig()
         instance = cls(config=config)
         await instance._async_init()
         return instance

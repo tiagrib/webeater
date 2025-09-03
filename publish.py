@@ -271,13 +271,6 @@ class WebeaterPublisher:
             new_version = self.get_new_version(current_version)
 
             # Check if version exists on PyPI/TestPyPI
-            try:
-                import requests  # noqa: F401
-            except ImportError:
-                print(
-                    "❌ Error: 'requests' package is required to check PyPI version existence. Install with: pip install requests"
-                )
-                sys.exit(1)
             if self.version_exists_on_pypi(new_version):
                 print(
                     f"❌ Version {new_version} already exists on the target PyPI repository. Aborting."
@@ -360,6 +353,12 @@ Examples:
     except (subprocess.CalledProcessError, FileNotFoundError):
         missing_tools.append("twine")
 
+    # Check requests
+    try:
+        import requests  # noqa: F401
+    except ImportError:
+        missing_tools.append("requests")
+
     # Check build (as python module)
     try:
         subprocess.run(
@@ -372,14 +371,7 @@ Examples:
 
     if missing_tools:
         print(f"❌ Error: Missing required tools: {', '.join(missing_tools)}")
-        tools_to_install = []
-        if "tox" in missing_tools:
-            tools_to_install.append("tox")
-        if "twine" in missing_tools:
-            tools_to_install.append("twine")
-        if "build" in missing_tools:
-            tools_to_install.append("build")
-        print(f"Install them with: pip install {' '.join(tools_to_install)}")
+        print(f"Install them with: pip install {' '.join(missing_tools)}")
         sys.exit(1)
 
     # Create publisher and run

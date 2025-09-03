@@ -40,5 +40,5 @@ This directory contains the files needed to package and distribute WebEater to P
 
 After uploading to Test PyPI, you can test install:
 ```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ --force-reinstall --no-deps webeater
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ --no-cache-dir --force-reinstall --no-deps webeater
 ```

@@ -7,12 +7,9 @@ Selenium and BeautifulSoup, with configurable hints and extraction strategies.
 
 from webeater.eater import Webeater
 
-__version__ = "0.1.7"
+__version__ = "0.1.1"
 __author__ = "Tiago Ribeiro"
 __email__ = "webeater@tiagoribeiro.pt"
 __license__ = "MIT"
 
-# For backward compatibility
-WebeaterEngine = Webeater
-
-__all__ = ["Webeater", "WebeaterEngine"]
+__all__ = ["Webeater"]
