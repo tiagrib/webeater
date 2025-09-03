@@ -1,5 +1,8 @@
 import asyncio
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
+from io import StringIO
+import subprocess
 from webeater.log import getLog
 from webeater.rendering import HtmlRenderer
 
@@ -78,6 +81,7 @@ class SeleniumRuntime(HtmlRenderer):
                 # Import Selenium components only when needed
                 from selenium import webdriver
                 from selenium.webdriver.chrome.options import Options
+                from selenium.webdriver.chrome.service import Service
 
             # Configure Chrome options for headless operation
             options = Options()
@@ -102,6 +106,12 @@ class SeleniumRuntime(HtmlRenderer):
             options.add_argument("--disable-logging")
             options.add_argument("--log-level=3")
             options.add_argument("--silent")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument(
+                "--remote-debugging-port=0"
+            )  # Disable remote debugging to suppress DevTools message
+            options.add_experimental_option("excludeSwitches", ["enable-logging"])
+            options.add_experimental_option("useAutomationExtension", False)
 
             # Additional performance optimizations
             options.add_argument(
@@ -138,8 +148,21 @@ class SeleniumRuntime(HtmlRenderer):
             }
             options.add_experimental_option("prefs", prefs)
 
-            # Create a new Chrome driver
-            self.Driver = await asyncio.to_thread(webdriver.Chrome, options=options)
+            # Create a Chrome service with suppressed output
+            service = Service()
+            service.creation_flags = (
+                subprocess.CREATE_NO_WINDOW
+                if hasattr(subprocess, "CREATE_NO_WINDOW")
+                else 0
+            )
+
+            # Create a new Chrome driver with suppressed output
+            # Redirect stdout/stderr to suppress DevTools message
+            devnull = StringIO()
+            with redirect_stdout(devnull), redirect_stderr(devnull):
+                self.Driver = await asyncio.to_thread(
+                    webdriver.Chrome, service=service, options=options
+                )
 
         return self.Driver
 
