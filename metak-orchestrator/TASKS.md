@@ -119,11 +119,53 @@ Add a new ContentExtractor implementation, `WebeaterFastBS`, in `webeater/thirdp
 
 ---
 
-### T3 — Make extractor selectable via config; switch default to FastBS (Epic E2)
+### T2b — Replace `html2text` with `markdownify` in `WebeaterFastBS` (Epic E2, perf recovery)
 
 **Target repo:** `webeater/`
 **Depends on:** T2
 **Status:** Pending
+**Driver:** D4. The T2 benchmark showed FastBS at 0.76× legacy throughput because of the double-parse penalty (see `metak-shared/LEARNED.md` L1). T2b switches to `markdownify` to walk the existing bs4 tree directly.
+
+**Required changes:**
+
+1. `webeater/thirdparty/fastbs.py`:
+   - Remove the `html2text` import and the `HTML2Text()` block.
+   - Use `markdownify` instead. **First** investigate which `markdownify` entrypoint can consume a pre-parsed `bs4` Tag/BeautifulSoup. Inspect the installed version (e.g. `python -c "import markdownify; help(markdownify.MarkdownConverter)"`). The class `MarkdownConverter` typically exposes a `convert_soup(soup)` method (or equivalent) that walks bs4 nodes; if that exists, use it. If only `markdownify(html_string)` is available in the installed version, fall back to that and measure — but flag the fallback in your report.
+   - Configure the converter to: not wrap lines (`bullets="-"`, `wrap=False` or equivalent), strip links and images (we re-attach our own), preserve heading levels, keep table structure if cheap. Read `markdownify`'s docs/source for the exact options. If a behaviour cannot be configured, document the divergence.
+   - Pipe the result through `cleanup_whitespace`.
+2. `pyproject.toml` and `requirements.txt`:
+   - Remove `html2text`.
+   - Add `markdownify` (pin to a current stable, e.g. `markdownify>=0.13`).
+3. `tests/bench_extractors.py`:
+   - No code changes required. Re-run after the swap.
+
+**Acceptance criteria:**
+
+- All existing tests still pass (`python run_tests.py`).
+- The output of `WebeaterFastBS` on the fixture continues to satisfy `test_compare_with_legacy_bs` (titles match, image set matches, link set matches, content non-empty). If `markdownify`'s emission produces a structurally different markdown body that is nonetheless equivalent in extracted information, that is acceptable — the comparison test only asserts on title/images/links/non-empty, not on the body string. Confirm.
+- `python tests/bench_extractors.py` shows FastBS at **≥ 1.0×** the legacy throughput. The orchestrator will use this number to decide T3's scope.
+- Two commits suggested:
+  - `refactor: swap html2text for markdownify in WebeaterFastBS`
+  - `chore(deps): replace html2text with markdownify`
+
+  (Or one combined commit if it stays small.)
+
+**Notes for the worker:**
+- Re-read `metak-shared/api-contracts/content-extractor.md`. The contract is unchanged — only the emission library is.
+- Do NOT silently change the failure-mode strings or the dict shape.
+- If `markdownify`'s default heading style (`#` vs `===`/`---` setext) differs from `html2text`, that's fine — pick `#`-style (ATX) explicitly to match the legacy walker's heading shape.
+- Re-run `python tests/bench_extractors.py` and paste the output verbatim into the completion report.
+- If after T2b FastBS is **still** slower than legacy, do NOT try to optimise further inside this task. Stop, report, and the orchestrator will decide whether to attempt a hand-rolled walker (a third epic-level decision) or ship FastBS as opt-in only.
+
+**Completion report:** append `### T2b — completion report (2026-05-07)` to `STATUS.md` with the same format as T2: implemented, contract compliance, test results, benchmark output, deviations, files touched, commit hashes.
+
+---
+
+### T3 — Make extractor selectable via config; switch default to FastBS (Epic E2)
+
+**Target repo:** `webeater/`
+**Depends on:** T2b
+**Status:** Pending — *the default switch is conditional on T2b achieving ≥ 1.0× legacy throughput. If T2b still underperforms, T3 will be re-scoped to keep `bs` as the default and ship FastBS as opt-in.*
 
 After T2 lands and is validated, expose the choice and flip the default.
 
