@@ -28,6 +28,18 @@ D2 assumed `html2text` would be a speedup over the hand-rolled walker. The T2 wo
 - **Consequences:** Drop the `html2text` runtime dependency. Add `markdownify`. The contracts and tests written in T2 should pass unchanged because the dict shape, hint application, image/link normalisation, title extraction, and failure strings all live outside the body-emission path.
 - **Validation gate:** T3 (default switch) only proceeds if the post-T2b benchmark shows FastBS at ≥ 1.0× the legacy throughput on the fixture. If FastBS still underperforms the legacy walker after T2b, T3 will be re-scoped to make the extractor configurable but keep `bs` as the default.
 
+### D4 retrospective (2026-05-07, post-T2b)
+
+T2b removed the double-parse and brought FastBS from 0.76× to 0.81× of legacy throughput — still under the 1.0× gate. Root cause this time is `markdownify`'s general-purpose walker overhead (escape passes, per-tag dispatch, parent-tag tracking) being heavier on small documents than the hand-rolled legacy walker. The double-parse hypothesis was correct but only partial; library overhead is a second, smaller, but real cost. D5 supersedes D4.
+
+## D5: Hand-roll a clean walker in FastBS — drop the markdown library entirely
+
+- **Date:** 2026-05-07 (post-T2b)
+- **Context:** D2 used `html2text` (0.76×). D4 swapped to `markdownify` (0.81×). Both library paths are slower than the legacy hand-rolled walker. The legacy walker is fast precisely because it skips edge cases — and its known bug is in the post-processing marker scheme (`>>>` / `<<<` / `>` / `<` placeholders that get string-replaced afterwards), not in the tree walk itself.
+- **Decision:** Replace the `markdownify` call in `WebeaterFastBS` with a hand-rolled tree walker. Start from the structure of the legacy `_extract_structured_text` but **emit proper Markdown directly** — no `>>>` / `<<<` markers, no post-hoc `replace()` chain. Drop the `markdownify` runtime dependency.
+- **Rationale:** The user's actual stated direction was *"a FastBS one that starts by being a copy of [WebeaterBeautifulSoup], but adds some enhancements"*. The cleanest enhancement is removing the marker-hack while keeping the walker's speed character. No library can match the legacy walker on this small-document path; only a focused, hand-written walker can deliver both clean output and parity (or better) speed.
+- **Validation gate:** T3 (default switch) only proceeds if T2c's benchmark shows FastBS at ≥ 1.0× the legacy throughput on the standard fixture, AND the comparison test still passes (titles match, image set matches, link set matches, content non-empty). If T2c also underperforms, T3 is re-scoped to keep `bs` as the default and ship FastBS as opt-in only — and the orchestrator will document that the project's "fast extractor" goal is bounded by the renderer wins in E3, not extractor changes.
+
 ## D3: Renderer wins deferred until user authorization
 
 - **Date:** 2026-05-07

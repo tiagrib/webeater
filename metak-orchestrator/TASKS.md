@@ -161,11 +161,65 @@ Add a new ContentExtractor implementation, `WebeaterFastBS`, in `webeater/thirdp
 
 ---
 
-### T3 — Make extractor selectable via config; switch default to FastBS (Epic E2)
+### T2c — Replace `markdownify` with a hand-rolled clean walker in FastBS (Epic E2, perf recovery #2)
 
 **Target repo:** `webeater/`
 **Depends on:** T2b
-**Status:** Pending — *the default switch is conditional on T2b achieving ≥ 1.0× legacy throughput. If T2b still underperforms, T3 will be re-scoped to keep `bs` as the default and ship FastBS as opt-in.*
+**Status:** Pending
+**Driver:** D5. T2b (markdownify) ran at 0.81× legacy throughput. The library overhead is unavoidable on small docs. The legacy hand-rolled walker is fast — its only real defect is the `>>>`/`<<<` marker scheme it emits and then string-replaces afterwards. T2c writes a clean walker that matches the legacy speed character but emits proper Markdown directly.
+
+**What to do:**
+
+1. In `webeater/thirdparty/fastbs.py`, replace the `MarkdownConverter().convert_soup(main_content)` call with a new module-private function `_walk_to_markdown(element) -> str`. Take `webeater/thirdparty/beautifulsoup.py:_extract_structured_text` as a structural reference, but produce real Markdown directly:
+   - **No** `>{res}<` / `>>>` / `<<<` markers anywhere.
+   - **No** post-hoc `text.replace(">>><<<", ...)` chain.
+   - Use explicit `\n\n` separators between block-level pieces.
+   - Headings: `'#' * level + ' ' + text + '\n\n'` for `h1`–`h6`. Map `<header>` to level 1 (or 2 — pick one and document; the legacy used level 0 which produced ` ` as the prefix, which is broken).
+   - Paragraphs: `text + '\n\n'`.
+   - Unordered lists: each item on its own line as `'- ' + item_text`. Then `'\n'` after the list.
+   - Ordered lists: each item as `'1. ' + item_text` (Markdown auto-numbers `1.` items, so this is fine and matches the legacy behaviour).
+   - Tables: emit a real GitHub-Flavoured Markdown table (`| cell | cell |\n| --- | --- |\n| ... |`). The legacy emitted `T|...|` which is not Markdown. This is an enhancement; the comparison test does NOT assert on body content, so it is safe.
+   - Other inline / unknown elements: recurse into children, accumulate text, deduplicate within the same parent only when the legacy did (preserve the de-dup behaviour for repeated content blocks).
+   - The function returns a single string. Run it through `cleanup_whitespace` at the call site.
+2. Drop the `markdownify` runtime dependency:
+   - Remove the `markdownify>=...` line from `pyproject.toml` and `requirements.txt`.
+   - Remove the `markdownify` import from `fastbs.py`.
+3. Keep everything else identical: hint application, title extraction, `_extract_images`, `_extract_links`, dict assembly, failure strings, logger.
+4. Run the suite. All 98 tests must still pass — particularly `test_compare_with_legacy_bs`, which only checks title/images/links/non-empty body, so structural body-string differences are fine.
+5. Run `python tests/bench_extractors.py`. Capture verbatim.
+
+**Acceptance criteria:**
+
+- All existing tests pass.
+- Bench shows FastBS at **≥ 1.0×** the legacy throughput on the standard fixture. If between 0.95× and 1.0×, that is acceptable as long as FastBS is faster than T2b's 0.81× — note explicitly in the report. The orchestrator will use the number to gate T3.
+- No `markdownify` import anywhere in `webeater/`.
+- `tests/bench_extractors.py` still works without modification.
+
+**Constraints:**
+
+- Do NOT touch `webeater/thirdparty/beautifulsoup.py` (legacy must stay intact for the comparison test).
+- Do NOT change the default extractor (T3's job).
+- Do NOT widen the comparison test to assert on body content.
+- Python 3.9+. Black-formatted. No emojis. Conventional Commits. No `--no-verify`.
+
+**Workflow:**
+
+1. Read `metak-orchestrator/DECISIONS.md` D2-retro / D4-retro / D5, `metak-shared/LEARNED.md` L1/L2, `metak-shared/api-contracts/content-extractor.md`, the current `webeater/thirdparty/fastbs.py`, and `webeater/thirdparty/beautifulsoup.py:_extract_structured_text` (as reference).
+2. Replace the body emission in `fastbs.py`. Drop `markdownify`.
+3. Run tests until green.
+4. Run bench, capture output.
+5. Commit: `refactor: hand-roll clean tree walker in WebeaterFastBS, drop markdownify`.
+6. Append `### T2c — completion report (2026-05-07)` to `STATUS.md` with: implemented, test results, bench output verbatim, new ratio, gate result (PASS / FAIL), deviations, files touched, commit hashes.
+
+If T2c also fails the gate, stop and report. Do NOT attempt a third optimisation pass — the orchestrator will accept the result and re-scope T3.
+
+---
+
+### T3 — Make extractor selectable via config; switch default to FastBS (Epic E2)
+
+**Target repo:** `webeater/`
+**Depends on:** T2c
+**Status:** Pending — *the default switch is conditional on T2c achieving ≥ 1.0× legacy throughput. If T2c still underperforms, T3 will be re-scoped to keep `bs` as the default and ship FastBS as opt-in.*
 
 After T2 lands and is validated, expose the choice and flip the default.
 
