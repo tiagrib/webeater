@@ -2,7 +2,44 @@
 
 ## Active
 
-_T1 complete. See completion report below. T2 ready to spawn._
+_E2 (extractor performance) complete. WebeaterFastBS is the default. No active tasks. E3 (renderer performance) is held pending user authorization — see EPICS.md._
+
+## Sprint summary (2026-05-07)
+
+**Goal:** Add a faster, cleaner extractor (`WebeaterFastBS`), validate against the legacy, set as default. **Done.**
+
+**Final result:**
+
+- `WebeaterFastBS` ships as the default content extractor (`WeatConfig.extractor = "fastbs"`).
+- `WebeaterBeautifulSoup` remains available via `WeatConfig.extractor = "bs"`.
+- Bench: FastBS at **1.06×–1.12×** legacy throughput on the standard fixture (3 consecutive runs).
+- 108 tests passing (`run_tests.py` reports `Ran 108 tests in 0.507s — OK`).
+- Live CLI smoke against `https://example.com` confirmed in T3.
+- 17 commits on `main`. Clean working tree. Not pushed.
+
+**Path that got us here (with retrospectives):**
+
+| Phase | Approach | Result | Decision |
+|-------|----------|--------|----------|
+| T1 | Align `ContentExtractor` ABC with the contract; harden `SeleniumRuntime.shutdown()`. | 84 → 84+ tests passing. | Land. |
+| T2 | `WebeaterFastBS` backed by `html2text`. | Functional, **0.76×** of legacy throughput. Double-parse penalty. | Retro D2; plan T2b. |
+| T2b | Swap to `markdownify.MarkdownConverter().convert_soup()` (no double-parse). | 0.81× of legacy. Library walker overhead is itself heavier than the legacy hand-rolled walker on small docs. | Retro D4; plan T2c. |
+| T2c | Drop `markdownify`; hand-roll a clean walker that emits real Markdown directly (no `>>>`/`<<<` markers; real GFM tables). | **1.06×–1.12×** of legacy. Gate passed. | Land. |
+| T3 | Add `extractor: Literal["bs", "fastbs"]` to `WeatConfig`; default `"fastbs"`; lazy-import the chosen implementation in `Webeater.__init__`. Update README and contracts. | 108 tests passing. Live CLI smoke OK. | Land. |
+
+**Lessons captured (`metak-shared/LEARNED.md`):**
+
+- L1 — html2text after BS4 = double-parse penalty.
+- L2 — Even no-double-parse markdown libraries lose to a tight hand-rolled walker on small fixtures.
+
+**Open follow-ups (deferred, not actioned):**
+
+- Pre-existing `✅`/`❌` emoji prints in `run_tests.py` and `tests/test_suite.py` (lines 54/57/76/79) violate CUSTOM.md's no-emoji rule and break the runner's exit code on cp1252 Windows shells. Worth a tiny `chore:` task.
+- `tests/test_suite.py` double-counts test classes by importing them at module level on top of `unittest` discovery. T3 worker noted this; not in scope to fix.
+- `STRUCT.md` (per AGENTS.md "Project Structure" section) does not exist at the repo root.
+- E3 (renderer performance — scroll gating, HTTP fast path, concurrency, wait tuning, Playwright migration) is documented in `EPICS.md` and TASKS.md backlog T4–T8 but held until the user authorizes it.
+
+
 
 ### T1 — completion report (2026-05-07)
 
