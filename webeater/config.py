@@ -1,7 +1,7 @@
 import pydantic
 import json
 import os
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from webeater.log import getLog
 
@@ -127,6 +127,7 @@ class WeatConfig(pydantic.BaseModel):
 
     filename: str = pydantic.Field(DEFAULT_CONFIG_FILE, exclude=True)
     debug: bool = False
+    extractor: Literal["bs", "fastbs"] = pydantic.Field(default="fastbs")
 
     @pydantic.field_validator("window_size_w", "window_size_h")
     @classmethod
@@ -199,6 +200,10 @@ class WeatConfig(pydantic.BaseModel):
             # Remove debug field if it's False (default value)
             if data.get("debug") is False:
                 data.pop("debug", None)
+
+            # Remove extractor field if it matches the default value
+            if data.get("extractor") == "fastbs":
+                data.pop("extractor", None)
 
             with open(self.filename, "w") as f:
                 f.write(json.dumps(data, indent=4))

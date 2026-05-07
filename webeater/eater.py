@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional
 from webeater.config import WeatConfig
-from webeater.thirdparty.beautifulsoup import WebeaterBeautifulSoup
 from webeater.thirdparty.selenium import SeleniumRuntime
 from webeater.log import getLog
 
@@ -21,7 +20,17 @@ class Webeater:
         self.html_renderer = SeleniumRuntime()
         # Use the pre-combined hints from config
         self.content_extraction_hints = self.config.get_combined_hints()
-        self.context_extractor = WebeaterBeautifulSoup()
+        # Lazy-import the selected extractor so users on the "bs" path don't
+        # import "fastbs" and vice versa. This shaves a small amount off
+        # cold-start time for either selection.
+        if self.config.extractor == "bs":
+            from webeater.thirdparty.beautifulsoup import WebeaterBeautifulSoup
+
+            self.context_extractor = WebeaterBeautifulSoup()
+        else:  # "fastbs"
+            from webeater.thirdparty.fastbs import WebeaterFastBS
+
+            self.context_extractor = WebeaterFastBS()
 
     async def _async_init(self):
         """Async initialization method"""
@@ -31,9 +40,9 @@ class Webeater:
         )
         self.log.debug("Selenium driver loaded successfully.")
 
-        self.log.debug("Load BeautifulSoup extractor...")
+        self.log.debug(f"Load extractor ({self.config.extractor})...")
         await self.context_extractor.load()
-        self.log.debug("BeautifulSoup extractor loaded successfully.")
+        self.log.debug(f"Extractor ({self.config.extractor}) loaded successfully.")
 
         return self
 
