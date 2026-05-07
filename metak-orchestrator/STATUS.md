@@ -204,6 +204,88 @@ Speedup (legacy / fast): 0.81x
 - `d44a8ac` `refactor: swap html2text for markdownify in WebeaterFastBS`
 - `5e43ee3` `chore(deps): replace html2text with markdownify`
 
+### T2c — completion report (2026-05-07)
+
+**What was implemented:**
+
+- `webeater/thirdparty/fastbs.py`: replaced the `markdownify.MarkdownConverter().convert_soup(main_content)` call with a new module-private function `_walk_to_markdown(element) -> str` plus the per-child helper `_emit_child` and the table emitter `_emit_table`. Single-pass walker over `element.children`. The previous `MarkdownConverter` setup in `load()` is gone; `load()` now only imports `BeautifulSoup`.
+- Block-level emission rules:
+  - `h1`-`h6`: `'#' * int(tag[1]) + ' ' + text + '\n\n'`.
+  - `<header>` (semantic, not the same as `h1`): renders its inner walk + `\n\n` but emits **no** heading marker. Documented decision: the legacy `header -> level=0` produced a bare `# ` prefix which is broken; "no marker" is the cleanest preservation of intent.
+  - `p`: `text + '\n\n'`.
+  - `ul`: each `<li>` -> `- {item}\n`, then trailing `\n`.
+  - `ol`: each `<li>` -> `1. {item}\n` (Markdown auto-renumbers), then trailing `\n`.
+  - `table`: real GFM table - `| h1 | h2 |\n| --- | --- |\n| a | b |`. The first row is treated as header whether it contains `<th>` or only `<td>` (always emit the separator row). Short rows are padded to header width; over-wide rows are truncated. This is an enhancement over the legacy `T|...|` shape; safe because `test_compare_with_legacy_bs` does not assert on body content.
+  - `pre`: emits a fenced code block (` ```\n...\n``` `).
+  - `br`: `\n`.
+- Inline / unknown tag handling: if the child contains any block-level descendant (cheap `find` shortlist check), recurse into it via `_walk_to_markdown`; otherwise collapse to its stripped `get_text()` plus a trailing space (so adjacent inline runs stay separated).
+- `NavigableString` text nodes: stripped text + trailing space.
+- Per-frame de-duplication: `unique_parts: set[str]` tracks block emissions inside one parent and skips repeats. Not shared across recursion levels (mirrors legacy `_extract_structured_text` per-frame dedup behaviour).
+- The `cleanup_whitespace` post-pass at the call site is unchanged.
+- `pyproject.toml`: removed `"markdownify>=1.2.2"`.
+- `requirements.txt`: removed `markdownify==1.2.2`.
+- `pip uninstall markdownify -y` ran locally so the test environment cannot accidentally satisfy a stale import.
+
+**Walker style — confirmation of cleanness:**
+
+There are no marker strings (`>>>`, `<<<`, `>{...}<`, `<<`, `>>`, ` < >>`) anywhere in `fastbs.py`. There is no post-hoc `text.replace(">>><<<", ...)` chain. Block elements emit final-form Markdown with explicit `\n\n` separators and `cleanup_whitespace` collapses any over-emitted blank lines. Verified via grep over `webeater/`.
+
+**Test results (last lines of `python run_tests.py` with `PYTHONIOENCODING=utf-8`):**
+
+```
+Ran 98 tests in 0.813s
+
+OK
+```
+
+All 98 tests pass, including `test_compare_with_legacy_bs` (titles match, image set matches, link set matches, both bodies non-empty).
+
+**Benchmark output (`python tests/bench_extractors.py`, three consecutive runs verbatim):**
+
+```
+Fixture: C:\repo\webeater\tests\data\fixtures\sample_article.html
+Iterations: 100 (warmup 5)
+WebeaterBeautifulSoup: avg 2.450 ms / call
+WebeaterFastBS:        avg 2.209 ms / call
+Speedup (legacy / fast): 1.11x
+```
+
+```
+Fixture: C:\repo\webeater\tests\data\fixtures\sample_article.html
+Iterations: 100 (warmup 5)
+WebeaterBeautifulSoup: avg 2.553 ms / call
+WebeaterFastBS:        avg 2.272 ms / call
+Speedup (legacy / fast): 1.12x
+```
+
+```
+Fixture: C:\repo\webeater\tests\data\fixtures\sample_article.html
+Iterations: 100 (warmup 5)
+WebeaterBeautifulSoup: avg 2.361 ms / call
+WebeaterFastBS:        avg 2.225 ms / call
+Speedup (legacy / fast): 1.06x
+```
+
+**New speedup ratio (legacy / fast):** **1.06x - 1.12x** (canonical: ~1.10x). Compared to T2's 0.76x (`html2text`) and T2b's 0.81x (`markdownify`), the hand-rolled walker is the first FastBS variant to actually beat the legacy walker on this fixture - a 31-percentage-point gain over T2b. The walker pays for none of `markdownify`'s general-purpose machinery (escape passes, per-tag function dispatch, parent-tag tracking, whitespace normalisation), and its block-level emission rules cover everything the fixture exercises in fewer Python statements per node than the legacy `_extract_structured_text` plus its post-hoc `replace` chain.
+
+**Acceptance gate result:** **PASS** (1.06x - 1.12x, all >= 0.95x and consistently >= 1.0x). T3 may proceed with FastBS as the default extractor.
+
+**Deviations from the spec:**
+
+- `<header>` rendering: spec offered "level 1 or pick one and document". I chose **no heading marker at all** for `<header>` (just emit its children's Markdown plus a blank line). Rationale: `<header>` is semantic markup that wraps a banner area and may itself contain an `<h1>`, in which case adding a level-1 heading for the wrapper would duplicate the inner heading. The fixture's `<header><h1>...</h1></header>` block is the canonical example. With "no marker" the inner `<h1>` survives at its real level and no spurious wrapper heading is emitted. Documented at the call site.
+- Tables: emit GFM (`| ... |\n| --- | --- |\n| ... |`) instead of the legacy `T|...|`. Spec explicitly authorised this enhancement.
+- Added a cheap `_has_block_descendant` helper so unknown / inline tags fall back to `get_text()` when they have no block descendants (the common case), and only recurse when a block tag is genuinely nested inside. This keeps the walker single-pass on the hot path without giving up correctness on hand-written HTML that nests block tags inside `<div>` / `<span>` / etc.
+
+**Files touched:**
+
+- `webeater/thirdparty/fastbs.py`
+- `pyproject.toml`
+- `requirements.txt`
+
+**Commit hashes:**
+
+- `10daaf9` `refactor: hand-roll clean tree walker in WebeaterFastBS, drop markdownify`
+
 ## History
 
 ### 2026-05-07 — Orchestrator first run
