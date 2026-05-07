@@ -142,6 +142,68 @@ I did NOT implement any of these because the orchestrator's specification was ex
 - `c478756` `feat: add WebeaterFastBS extractor backed by html2text`
 - `b1007b6` `test: add fixtures, tests, and benchmark for WebeaterFastBS`
 
+### T2b — completion report (2026-05-07)
+
+**What was implemented:**
+
+- `webeater/thirdparty/fastbs.py`: removed the `import html2text` and the per-call `HTML2Text()` block. Imported `MarkdownConverter` and `ATX` from `markdownify` inside `load()` (matching the deferred-import pattern used for `BeautifulSoup`). Built one `MarkdownConverter` instance in `load()` and stored it on `self._md_converter` so it is reused across calls (the converter is stateless across invocations, and constructing it in the hot path measurably hurts).
+- Body emission swapped from `converter.handle(str(main_content))` to `self._md_converter.convert_soup(main_content)`. This walks the bs4 tree directly — no second parse, no `str(main_content)` serialisation in the hot path.
+- Converter options:
+  - `heading_style=ATX` so headings render as `#` (matches the legacy walker's shape; markdownify defaults to setext underlines).
+  - `bullets="-"` for unordered lists.
+  - `strip=["a", "img"]` to drop markdownify's own link/image emission, since webeater re-attaches its own `## Images` / `## Links` blocks and dict keys. (When a tag is in `strip`, `get_conv_fn` returns `None`, so the tag's children's text is still emitted but the wrapping `[text](href)` / `![alt](src)` syntax is dropped — verified against `markdownify/__init__.py:385-417`.)
+  - `wrap=False` to avoid hard line wrapping.
+- `cleanup_whitespace` still post-processes the body. Title extraction, hint application order (tags → classes → ids → main.selectors largest-match → `<body>` → root), `_extract_images`, `_extract_links`, dict shape, and the `"No content found"` / `"Failed to extract content: {error}"` failure strings are all unchanged.
+- `pyproject.toml`: dropped `html2text>=2024.2.26`, added `markdownify>=1.2.2` (the version `pip show markdownify` reported after install, which is the current PyPI stable).
+- `requirements.txt`: same swap.
+
+**Markdownify API used:** `MarkdownConverter(...).convert_soup(main_content)` — the **no-double-parse path**. Confirmed by reading `C:\Users\tiagr\.pyenv\pyenv-win\versions\3.12.10\Lib\site-packages\markdownify\__init__.py:225-226`: `convert_soup(self, soup)` returns `self.process_tag(soup, parent_tags=set())` and `process_tag` walks `node.children`, `node.name`, etc. — all native bs4 attributes. No fallback to `markdownify(str(...))` was needed.
+
+**Test results (last lines of `python run_tests.py`):**
+
+```
+Ran 98 tests in 0.539s
+
+OK
+```
+
+All 98 tests pass, including the legacy-comparison test `test_compare_with_legacy_bs` (titles match, image set matches, link set matches, both non-empty). The body markdown text differs slightly from `html2text`'s output but the comparison test only asserts on title/images/links/non-empty, so it holds — confirmed by the green run.
+
+**Benchmark output (canonical run, verbatim):**
+
+```
+Fixture: C:\repo\webeater\tests\data\fixtures\sample_article.html
+Iterations: 100 (warmup 5)
+WebeaterBeautifulSoup: avg 2.395 ms / call
+WebeaterFastBS:        avg 2.956 ms / call
+Speedup (legacy / fast): 0.81x
+```
+
+**Run-to-run variance.** The fixture is small (~12 KB) and per-call times are ~2–7 ms, so wall-clock variance is significant. I ran the bench 10 times. Quiet runs cluster at **0.79–0.85×**; one anomalous run came in at 1.03× (legacy 5.061 ms vs fast 4.908 ms, both ~2× the typical numbers — system noise affected legacy more than fast that round); two runs came in at 0.52–0.55× (system noise affected fast more). The dominant, reproducible signal is **~0.81–0.83× legacy**.
+
+**New speedup ratio (legacy / fast):** **0.81×** (canonical, typical of 8/10 runs). Interpretation: switching from `html2text` to `markdownify.convert_soup` did NOT close the gap — FastBS remains roughly 1.2× slower than the legacy hand-rolled walker on this fixture. The double-parse is gone, but `markdownify`'s general-purpose tree walker (with its escape passes, whitespace normalisation, parent-tag tracking, and conversion-function dispatch per node) is itself heavier than the legacy `_extract_structured_text` walker on small inputs. The legacy walker is single-pass and bypass-the-library cheap.
+
+**Acceptance gate result:** **FAIL** (0.81× < 1.0×). Per the T2b spec: "If FastBS is still slower: do NOT try to optimise further inside this task. Stop, report, and the orchestrator will decide between (a) hand-rolling a clean walker and (b) shipping FastBS as opt-in." Stopped here.
+
+**Implications for T3.** Per the gate text in `TASKS.md`: T3 should NOT flip the default to `fastbs`. It should be re-scoped to expose the extractor as a config field with `bs` remaining the default, shipping FastBS as opt-in. Or T3 is deferred while a third epic-level decision is taken on a hand-rolled walker.
+
+**Deviations from the spec:**
+
+- The task suggested `markdownify>=0.13`. The current PyPI stable is `1.2.2`, so I pinned `markdownify>=1.2.2` to match the version actually installed and tested. The API used (`MarkdownConverter`, `convert_soup`, `heading_style`, `bullets`, `strip`, `wrap`) has been stable since the 0.x line per the `__init__.py` source, so the pin is conservative.
+- I built the `MarkdownConverter` once in `load()` and reused it on `self._md_converter`, rather than constructing it per call. The task did not specify either way; reuse is cheap and an obvious win (the converter is stateless across calls beyond a `convert_fn_cache` that benefits from reuse).
+- No code changes to `tests/bench_extractors.py` (the task said no changes were required and I confirmed it ran without modification).
+
+**Files touched:**
+
+- `webeater/thirdparty/fastbs.py` — body-emission swap.
+- `pyproject.toml` — dependency swap.
+- `requirements.txt` — dependency swap.
+
+**Commit hashes:**
+
+- `d44a8ac` `refactor: swap html2text for markdownify in WebeaterFastBS`
+- `5e43ee3` `chore(deps): replace html2text with markdownify`
+
 ## History
 
 ### 2026-05-07 — Orchestrator first run
