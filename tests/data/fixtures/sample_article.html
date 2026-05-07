@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Sample Article For FastBS Tests</title>
+</head>
+<body>
+    <nav id="site-nav" class="primary-nav">
+        <ul>
+            <li><a href="/home">NavHomeLink</a></li>
+            <li><a href="/about">NavAboutLink</a></li>
+            <li><a href="javascript:void(0)">JsLinkShouldSkip</a></li>
+        </ul>
+        <p>NavJunkSentinelText that should be stripped when nav is removed.</p>
+    </nav>
+
+    <header>
+        <h1>Site Header That Is Not The Article</h1>
+    </header>
+
+    <article id="main-article" class="article-body">
+        <h1>The Headline Of The Article</h1>
+        <h2>A Subsection Heading</h2>
+
+        <p>This is the first paragraph of prose. It contains the marker
+        ArticleProseMarkerOne which tests rely on.</p>
+
+        <p>This is the second paragraph of prose. It also contains a marker:
+        ArticleProseMarkerTwo. The article continues with more body text so
+        the largest-by-text-length rule has a clear winner against any other
+        candidate elements that might also match a hint selector.</p>
+
+        <h2>List Section</h2>
+        <ul>
+            <li>List item one</li>
+            <li>List item two</li>
+            <li>List item three</li>
+        </ul>
+
+        <h2>Table Section</h2>
+        <table>
+            <thead>
+                <tr><th>Header A</th><th>Header B</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Row 1 Cell A</td><td>Row 1 Cell B</td></tr>
+                <tr><td>Row 2 Cell A</td><td>Row 2 Cell B</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Media Section</h2>
+        <p>
+            <img src="https://cdn.example.com/absolute-image.png" alt="AbsoluteImage">
+            <img src="/static/relative-image.png" alt="RelativeImage">
+        </p>
+
+        <h2>Links Section</h2>
+        <p>
+            <a href="https://external.example.org/article">AbsoluteLink</a>
+            <a href="/internal/page">RelativeLink</a>
+            <a href="mailto:author@example.com">MailtoLinkShouldSkip</a>
+            <a href="#section-anchor">AnchorLinkShouldSkip</a>
+        </p>
+
+        <script>
+            var ArticleScriptSentinel = "ScriptSentinelInsideArticleShouldBeStripped";
+            console.log(ArticleScriptSentinel);
+        </script>
+    </article>
+
+    <aside class="sidebar">
+        <p>SidebarJunkSentinelText that lives outside the article.</p>
+    </aside>
+
+    <footer id="site-footer">
+        <p>FooterJunkSentinelText (c) 2026 Sample Site.</p>
+        <a href="/privacy">FooterPrivacyLink</a>
+    </footer>
+</body>
+</html>

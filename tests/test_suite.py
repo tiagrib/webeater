@@ -19,6 +19,7 @@ from tests.test_lifecycle import (
     TestSeleniumRuntimeShutdownLifecycle,
     TestContentExtractorAbcSignature,
 )
+from tests.test_fastbs import TestWebeaterFastBS
 
 
 # Create a test suite that includes all test classes
@@ -37,6 +38,9 @@ def create_test_suite():
     # Add lifecycle tests
     suite.addTest(unittest.makeSuite(TestSeleniumRuntimeShutdownLifecycle))
     suite.addTest(unittest.makeSuite(TestContentExtractorAbcSignature))
+
+    # Add FastBS extractor tests
+    suite.addTest(unittest.makeSuite(TestWebeaterFastBS))
 
     return suite
 
