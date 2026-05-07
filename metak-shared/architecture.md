@@ -15,7 +15,7 @@ URL ──► HtmlRenderer ──► raw HTML ──► ContentExtractor ──�
 Two abstract base classes define the only meaningful internal seams:
 
 - `webeater.rendering.HtmlRenderer` — fetches and renders a URL into a fully-loaded HTML string. Implemented by `webeater.thirdparty.selenium.SeleniumRuntime`.
-- `webeater.extracting.ContentExtractor` — turns rendered HTML into either Markdown text or a dict with title/content/images/links. Implemented by `webeater.thirdparty.beautifulsoup.WebeaterBeautifulSoup`.
+- `webeater.extracting.ContentExtractor` — turns rendered HTML into either Markdown text or a dict with title/content/images/links. Implemented by `webeater.thirdparty.fastbs.WebeaterFastBS` (default) and `webeater.thirdparty.beautifulsoup.WebeaterBeautifulSoup` (legacy, opt-in via `WeatConfig.extractor="bs"`).
 
 These two interfaces are documented as contracts in `metak-shared/api-contracts/` because they are the swap points if the project ever grows alternative renderers or extractors. The hints JSON schema and the library/CLI public surface are also documented as contracts because they are user-facing.
 
@@ -28,7 +28,8 @@ These two interfaces are documented as contracts in `metak-shared/api-contracts/
 | `webeater.rendering.HtmlRenderer` (abstract) | Async `load(window_size_w, window_size_h)`, `get_rendered_html(url, interact=False)`, `shutdown()`. | implementation-specific |
 | `webeater.thirdparty.selenium.SeleniumRuntime` | Concrete renderer. Headless Chrome via Selenium, eager page-load strategy, multi-pass scroll to trigger lazy loads, hard 5s page-load timeout. | Chrome (subprocess) |
 | `webeater.extracting.ContentExtractor` (abstract) | Async `load()`, `extract_content(url, html, hints, return_dict, include_images, include_links)`, `shutdown()`. | implementation-specific |
-| `webeater.thirdparty.beautifulsoup.WebeaterBeautifulSoup` | Concrete extractor. Strips by tag/class/id from hints, picks main content by hint selectors (largest match wins), walks the tree to emit Markdown-flavoured structured text, optionally appends images/links. | `bs4` |
+| `webeater.thirdparty.beautifulsoup.WebeaterBeautifulSoup` (legacy) | Concrete `ContentExtractor`. Strips by tag/class/id from hints, picks main content by hint selectors (largest match wins), walks the tree to emit Markdown-flavoured structured text, optionally appends images/links. Selected via `WeatConfig.extractor="bs"`. | `bs4` |
+| `webeater.thirdparty.fastbs.WebeaterFastBS` (default) | Concrete `ContentExtractor`. Hand-rolled clean-tree walker over a `bs4`-parsed DOM; emits GitHub-Flavoured Markdown (including real tables) without a third-party markdown library. Default extractor since T3. | `bs4` |
 | `webeater.__main__` | CLI entrypoint (`weat`, `webeater` console scripts). Parses args, builds `WeatConfig`, awaits `Webeater.create()`, dispatches one-shot or REPL. | terminal |
 | `webeater.log` | Singleton `coloredlogs` setup with global debug/silent toggles. | stderr |
 | `webeater.util.cleanup_whitespace` | Whitespace collapse helper used by the extractor. | — |
@@ -47,7 +48,7 @@ These two interfaces are documented as contracts in `metak-shared/api-contracts/
 - **Language**: Python 3.9+ (tested on 3.12.3).
 - **Validation**: pydantic v2 (`pydantic>=2.11.7`).
 - **Rendering**: Selenium 4 + headless Chrome (user must have Chrome installed; Selenium Manager resolves the driver automatically — no chromedriver in `requirements.txt`).
-- **Parsing**: BeautifulSoup 4 with the stdlib `html.parser`.
+- **Parsing**: BeautifulSoup 4 with the stdlib `html.parser`. The default extractor is `WebeaterFastBS` — a hand-rolled clean-tree walker over the `bs4` DOM with no third-party markdown library. The legacy `WebeaterBeautifulSoup` extractor remains available via `WeatConfig.extractor="bs"`.
 - **Logging**: `coloredlogs`.
 - **Async**: stock `asyncio`; blocking Selenium calls are wrapped with `asyncio.to_thread`.
 - **Packaging**: setuptools via `pyproject.toml`; CLI entry points `weat` and `webeater`; hint JSON files included as package data.
@@ -86,3 +87,10 @@ None. The package is `pip install`'d into the user's environment. There is no se
 - **Decision**: Adopt the metak structure even though webeater is currently a single-package single-repo project. The "service map" above lives inside one Python package, not across repos.
 - **Rationale**: Establishes orchestrator-led planning and contract gates before the codebase grows. Keeps room for future split (e.g., separate renderer service) without a re-org.
 - **Consequences**: `metak-shared/api-contracts/` documents *intra-package* abstract interfaces and user-facing schemas, not cross-repo wire formats. If a sub-repo is later spun out, the contracts move with it.
+
+### ADR-005: Default extractor switched to `WebeaterFastBS`
+
+- **Context**: T3 introduced the `WeatConfig.extractor` field with values `"bs"` and `"fastbs"`. `WebeaterFastBS` is a hand-rolled clean-tree walker that emits real GitHub-Flavoured Markdown tables and runs faster than the legacy walker on the standard fixture.
+- **Decision**: Default `WeatConfig.extractor` to `"fastbs"`. The engine selects the extractor at construction time. The default is omitted from saved `weat.json` files. Legacy `WebeaterBeautifulSoup` remains available via `extractor="bs"`.
+- **Rationale**: Better default output quality and speed without sacrificing the documented opt-in path for users that depend on the legacy extractor's exact output. See `metak-orchestrator/DECISIONS.md` D5 for full history.
+- **Consequences**: Switching extractors requires constructing a new `Webeater`; per-call extractor swaps are not supported.

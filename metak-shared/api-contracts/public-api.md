@@ -67,6 +67,7 @@ WeatConfig(
 | `combined_hints` | `HintsConfig | None` | computed | **Excluded from serialization.** |
 | `filename` | `str` | `"weat.json"` | **Excluded from serialization.** |
 | `debug` | `bool` | `False` | Excluded from `save()` when `False`. |
+| `extractor` | `Literal["bs", "fastbs"]` | `"fastbs"` | Selects the content extractor at engine construction time. Excluded from `save()` when it equals the default. |
 
 ## CLI surface
 
@@ -123,3 +124,4 @@ The base CLI flags (`--silent`, etc.) still apply to every line in the REPL.
 - `WeatConfig.__init__` always calls `save()`, even if no fields changed. This rewrites `weat.json` on every load, which is surprising for a "config object" and shows up as a working-tree dirty file in some workflows.
 - The default `WeatConfig` has `window_size_w=1280, window_size_h=800`, but the `SeleniumRuntime` module-level constants are `WINDOW_SIZE_W=1920, WINDOW_SIZE_H=3000`, and the bundled `weat.json` ships with `1920 / 3000`. The two defaults disagree; the config wins when one is provided, and the runtime constants are used only as fallbacks.
 - The `--debug` flag is consumed by the logger before `WeatConfig` reads its own `debug` field, so if `weat.json` has `"debug": true` and the CLI is invoked without `--debug`, log level is **not** raised. This is a known minor inconsistency.
+- The engine selects the content extractor at construction time based on `WeatConfig.extractor`; switching extractors requires constructing a new `Webeater`.

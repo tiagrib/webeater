@@ -131,5 +131,25 @@ such as specifying the default user agent, timeout settings, and other parameter
 For more detailed documentation on configuration options and advanced usage,
 please refer to the [Hints Documentation](hints/README.md).
 
+### Extractor selection
+
+WebEater ships with two content extractors. You can pick which one runs by setting
+`extractor` in `weat.json`:
+
+- `fastbs` (default) — a hand-rolled clean-tree walker that emits real
+  GitHub-Flavoured Markdown tables. Faster than `bs` on the standard fixture and
+  produces tidier markdown output.
+- `bs` — the original BeautifulSoup-walking extractor. Kept available for
+  compatibility with output produced by older webeater versions.
+
+To opt out of the default and pin the legacy extractor, add this to `weat.json`:
+
+```
+{"extractor": "bs"}
+```
+
+When `extractor` is left at its default (`fastbs`), it is omitted from the saved
+`weat.json` so existing config files stay clean.
+
     
     
