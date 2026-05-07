@@ -2,7 +2,12 @@
 WebeaterFastBS — a ``ContentExtractor`` implementation that mirrors
 ``WebeaterBeautifulSoup`` for hint application, title/image/link extraction
 and output assembly, but replaces the fragile hand-rolled
-``_extract_structured_text`` walker with ``html2text`` for the Markdown body.
+``_extract_structured_text`` walker with ``markdownify`` for the Markdown body.
+
+``markdownify``'s ``MarkdownConverter.convert_soup`` walks the existing
+BeautifulSoup tree directly, so we avoid the double-parse penalty that
+``html2text.handle(str(main_content))`` incurred (see
+``metak-shared/LEARNED.md`` L1 and ``metak-orchestrator/DECISIONS.md`` D4).
 
 Contract: see ``metak-shared/api-contracts/content-extractor.md``.
 """
@@ -14,11 +19,12 @@ from webeater.config import HintsConfig
 
 
 class WebeaterFastBS(ContentExtractor):
-    """Fast BeautifulSoup + html2text content extractor.
+    """Fast BeautifulSoup + markdownify content extractor.
 
     Drop-in equivalent of ``WebeaterBeautifulSoup`` for the contracted fields
     (title, images, links, dict shape). The body Markdown is produced by
-    ``html2text.HTML2Text`` rather than the legacy structured-text walker.
+    ``markdownify.MarkdownConverter`` walking the bs4 tree directly rather
+    than the legacy structured-text walker.
     """
 
     def __init__(self, hint_names: list = None, combined_hints: HintsConfig = None):
@@ -27,8 +33,21 @@ class WebeaterFastBS(ContentExtractor):
 
     async def load(self):
         from bs4 import BeautifulSoup  # type: ignore
+        from markdownify import ATX, MarkdownConverter  # type: ignore
 
         self._BSCLASS = BeautifulSoup
+        # Pre-build the converter once; it is stateless across calls.
+        # ``strip=["a", "img"]`` drops markdownify's own link/image emission
+        # (we re-attach our own ``## Images`` / ``## Links`` blocks and
+        # ``images`` / ``links`` dict keys). ATX headings (``#``) and ``-``
+        # bullets match the legacy walker's shape. ``wrap=False`` avoids
+        # hard line wrapping.
+        self._md_converter = MarkdownConverter(
+            heading_style=ATX,
+            bullets="-",
+            strip=["a", "img"],
+            wrap=False,
+        )
 
     async def extract_content(
         self,
@@ -46,8 +65,6 @@ class WebeaterFastBS(ContentExtractor):
         in everything except the body-text generation step.
         """
         try:
-            import html2text
-
             soup = self._BSCLASS(html, "html.parser")
 
             if hints and hints.remove:
@@ -112,15 +129,11 @@ class WebeaterFastBS(ContentExtractor):
             if title and not return_dict:
                 text_content.append(f"# {title}\n")
 
-            # Body markdown via html2text. We strip its own image/link output
-            # because we re-attach our own ``## Images`` / ``## Links`` blocks
-            # and our own ``images`` / ``links`` dict keys.
-            converter = html2text.HTML2Text()
-            converter.body_width = 0  # don't hard-wrap
-            converter.ignore_links = True  # we re-attach our own list
-            converter.ignore_images = True  # we re-attach our own list
-            converter.skip_internal_links = True
-            content_text = converter.handle(str(main_content))
+            # Body markdown via markdownify, walking the bs4 tree directly
+            # (no re-parse). We strip its own image/link output because we
+            # re-attach our own ``## Images`` / ``## Links`` blocks and our
+            # own ``images`` / ``links`` dict keys.
+            content_text = self._md_converter.convert_soup(main_content)
             content_text = cleanup_whitespace(content_text)
 
             if content_text:
