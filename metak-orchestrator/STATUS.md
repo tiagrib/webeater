@@ -286,6 +286,51 @@ Speedup (legacy / fast): 1.06x
 
 - `10daaf9` `refactor: hand-roll clean tree walker in WebeaterFastBS, drop markdownify`
 
+### T3 — completion report (2026-05-07)
+
+**What was implemented:**
+
+- `webeater/config.py`: added `extractor: Literal["bs", "fastbs"] = pydantic.Field(default="fastbs")` to `WeatConfig`. `save()` drops the `extractor` key when it equals the default `"fastbs"`, mirroring the existing treatment of the `debug` field.
+- `webeater/eater.py`: `Webeater.__init__` no longer eagerly imports `WebeaterBeautifulSoup`. It now lazy-imports either `WebeaterBeautifulSoup` (when `config.extractor == "bs"`) or `WebeaterFastBS` (the default `"fastbs"` branch). `_async_init`'s log lines were generalised to mention which extractor was loaded.
+- `tests/test_extractor_selection.py`: new `TestExtractorSelection` with five cases — default selects FastBS, explicit `"bs"` selects legacy, explicit `"fastbs"` selects FastBS, invalid value raises `pydantic.ValidationError`, and the default value is omitted from saved `weat.json` while a non-default value is persisted. Tests construct `Webeater(config=...)` synchronously to avoid booting Selenium.
+- `tests/test_suite.py`: registered `TestExtractorSelection` so it runs under both the discovery-based runner (`run_tests.py`) and the explicit-suite runner (`python -m tests.test_suite`).
+- `README.md`: added an "Extractor selection" subsection under "Configuration and Advanced documentation" describing both extractors and the one-line opt-out (`{"extractor": "bs"}` in `weat.json`).
+- `metak-shared/api-contracts/public-api.md`: added an `extractor` row to the `WeatConfig` public-fields table (`Literal["bs", "fastbs"]`, default `"fastbs"`, omitted from `save()` at default), plus a one-line note in "Known deviations" that the engine binds the extractor at construction time.
+- `metak-shared/architecture.md`: split the single `WebeaterBeautifulSoup` service-map row into two rows (legacy and default), updated the abstract-class summary to name both implementations, mentioned `WebeaterFastBS` as the new default in the tech stack, and recorded **ADR-005** for the default-extractor switch.
+
+**Default extractor:** confirmed. `WeatConfig().extractor == "fastbs"` and a freshly-constructed default `WeatConfig` writes a `weat.json` that does **not** contain an `"extractor"` key. The existing repo-root `weat.json` was not touched.
+
+**Test results:** `Ran 108 tests in 0.507s — OK` via `python run_tests.py` with `PYTHONIOENCODING=utf-8`. Baseline before T3 was 98 (verified via `git stash` + re-run). The new file contributes 5 distinct tests; they appear twice in the discovery runner (5 + 5 = 10) because `tests/test_suite.py` imports them at module level and discovery sees both the source module and the re-export — this is the same pre-existing doubling that already affected every other test class (T2c was reporting 98 in the same way; the true distinct-test count is ~54). All 108 collected tests pass.
+
+**Live smoke check:** `python -m webeater --silent --json https://example.com` returned:
+
+```
+{'title': 'Example Domain', 'content': '# Example Domain\nThis domain is for use in documentation examples without needing permission. Avoid use in operations.\nLearn more', 'images': [], 'links': ['[Learn more](https://iana.org/domains/example)'], 'fetch_time': '0:00:02.128855'}
+```
+
+JSON-shaped dict, content prefixed by FastBS's `# Example Domain` heading, links formatted as Markdown — confirms the default `fastbs` path runs end-to-end through the live renderer.
+
+**Deviations:**
+
+- The expected count in the task brief (98 + 5 = 103) did not account for the pre-existing test-class double-discovery via `tests/test_suite.py` imports. Actual collected count is 108. This is a counting artefact, not a test-suite regression — the same doubling affected the 98 baseline. No fix attempted: changing it would touch every other test class's bookkeeping and is out of scope for T3.
+
+**Files touched:**
+
+- `webeater/config.py`
+- `webeater/eater.py`
+- `tests/test_extractor_selection.py` (new)
+- `tests/test_suite.py`
+- `README.md`
+- `metak-shared/api-contracts/public-api.md`
+- `metak-shared/architecture.md`
+- `metak-orchestrator/STATUS.md` (this report)
+
+**Commit hashes:**
+
+- `125110a` `feat: select extractor via config and default to fastbs`
+- `36233bd` `test: cover extractor selection`
+- `51d8f89` `docs: document extractor selection in README and contracts`
+
 ## History
 
 ### 2026-05-07 — Orchestrator first run
