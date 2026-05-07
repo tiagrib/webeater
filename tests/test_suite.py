@@ -15,6 +15,10 @@ Run tests with:
 import unittest
 from tests.test_config import TestWeatConfig, TestRemoveHints, TestMainContentHints
 from tests.test_hints import TestHintsConfig
+from tests.test_lifecycle import (
+    TestSeleniumRuntimeShutdownLifecycle,
+    TestContentExtractorAbcSignature,
+)
 
 
 # Create a test suite that includes all test classes
@@ -29,6 +33,10 @@ def create_test_suite():
 
     # Add hint tests
     suite.addTest(unittest.makeSuite(TestHintsConfig))
+
+    # Add lifecycle tests
+    suite.addTest(unittest.makeSuite(TestSeleniumRuntimeShutdownLifecycle))
+    suite.addTest(unittest.makeSuite(TestContentExtractorAbcSignature))
 
     return suite
 

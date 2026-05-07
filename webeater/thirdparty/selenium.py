@@ -45,7 +45,13 @@ class SeleniumRuntime(HtmlRenderer):
 
     async def shutdown(self):
         self.log.debug("Shutting down Selenium driver...")
-        await asyncio.to_thread(self.Driver.quit)
+        if self.Driver is None:
+            self.log.debug("Selenium driver already shut down (no-op).")
+            return
+        try:
+            await asyncio.to_thread(self.Driver.quit)
+        finally:
+            self.Driver = None
         self.log.debug("Selenium driver shut down successfully.")
 
     async def reload(self):
