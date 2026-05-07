@@ -1,0 +1,26 @@
+---
+description: Project instructions
+globs:
+---
+Read and follow `AGENTS.md` at the repository root for project structure and agent roles.
+Read and follow `metak-shared/coding-standards.md` for coding conventions.
+
+## Agent role selection
+
+This is a multi-repo workspace. Your role depends on the scope of the user's request:
+
+- **Cross-repo or multi-component work** (touches more than one subfolder, involves integration, or requires architectural decisions): Adopt the **orchestrator** role. Read and follow `metak-orchestrator/AGENTS.md`. You plan, write shared docs, break work into tasks, and spawn worker agents — you do NOT write application code yourself.
+
+- **Single-repo work** (scoped entirely within one subfolder): Act as a **worker** agent. Read the AGENTS.md and CUSTOM.md in that subfolder. Write code, run tests, commit.
+
+When in doubt, start as orchestrator — it's safer to plan first than to code across boundaries without contracts.
+
+## Shared knowledge
+
+- `metak-shared/overview.md` — project goals and current state
+- `metak-shared/architecture.md` — system boundaries, service map, data flow
+- `metak-shared/api-contracts/` — interface specs between components
+- `metak-shared/glossary.md` — domain terms
+- `metak-shared/coding-standards.md` — linting, commits, reviews
+
+Treat `metak-shared/` as **read-only** unless you are the orchestrator.

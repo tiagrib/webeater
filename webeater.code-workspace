@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "Root"
+    },
+    {
+      "path": "./metak-orchestrator",
+      "name": "metak Orchestrator"
+    },
+    {
+      "path": "./metak-shared",
+      "name": "metak Shared Context"
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": true,
+      "metak-orchestrator": true,
+      "metak-shared": true
+    }
+  },
+  "extensions": {
+    "recommendations": []
+  }
+}
